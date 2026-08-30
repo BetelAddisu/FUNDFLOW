@@ -371,6 +371,54 @@ export default function ApplyPage() {
     });
   };
 
+  // Helper to compress image files client-side before sending
+  const compressImageIfNeeded = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/') || file.size < 1.2 * 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1600;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    });
+  };
+
   const sendMessage = async (
     text: string,
     sessId: string,
@@ -400,8 +448,12 @@ export default function ApplyPage() {
     const curAudio = audioOverride !== undefined ? audioOverride : audioFile;
     if (curAudio) formData.append('audio', curAudio);
 
-    const curLicense = licenseOverride !== undefined ? licenseOverride : licensePhoto;
-    const curWorkshop = workshopOverride !== undefined ? workshopOverride : workshopPhoto;
+    let curLicense = licenseOverride !== undefined ? licenseOverride : licensePhoto;
+    let curWorkshop = workshopOverride !== undefined ? workshopOverride : workshopPhoto;
+
+    // Compress photo uploads client-side to prevent 413 Payload Too Large errors
+    if (curLicense) curLicense = await compressImageIfNeeded(curLicense);
+    if (curWorkshop) curWorkshop = await compressImageIfNeeded(curWorkshop);
 
     if (curLicense) formData.append('photos', curLicense);
     if (curWorkshop) formData.append('photos', curWorkshop);
@@ -462,7 +514,18 @@ export default function ApplyPage() {
         body: formData,
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        if (res.status === 413 || rawText.toLowerCase().includes('request entity') || rawText.toLowerCase().includes('large')) {
+          setError('File size too large for a single upload. Please send your audio recording and photo separately.');
+        } else {
+          setError(`Server response error (${res.status}): ${rawText.slice(0, 120)}`);
+        }
+        return;
+      }
 
       if (data.error) {
         setError(data.error);
