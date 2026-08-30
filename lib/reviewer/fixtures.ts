@@ -16,17 +16,17 @@ export const reviewerFixtures: ReviewerFixture[] = [
       workshopPhotoUrl: '/demo/workshop-nahom.jpg',
     },
     input: {
-      sales_growth_pct: 42,
+      sales_growth_pct: 60,
       total_employees: 3,
       uniqueness: 'different_from_competitors',
-      market_served: 'local_only',
+      market_served: 'import_substituting',
       local_sourcing_pct: 30,
       ownership: 'neither',
       women_employee_pct: 0,
       youth_employee_pct: 66,
       expected_results_count: 3,
-      job_count: 255, // 255,000 Birr requested for Hot Air Soldering Station (180k) & Digital Microscope (75k)
-      investment_readiness: 28,
+      job_count: 3, // 3 new jobs created (Assistant Technician, Receptionist, Intern)
+      investment_readiness: 30,
       management_team_size: 3,
       impact_category: 'both_social_env',
       legally_registered_and_years: true,

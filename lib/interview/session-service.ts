@@ -476,7 +476,14 @@ export class InterviewSessionService {
 
   private async generateNextQuestion(session: SessionState, gaps?: CoverageGap[], justExtractedFields?: string[]): Promise<string> {
     const lang = session.language;
-    const gapsToUse = gaps ?? getCoverageGaps(session.flatEvidence);
+
+    const hasLicense = !!session.flatEvidence['documents.business_license_uploaded']?.value;
+    if (hasLicense) {
+      autoHypothesizeMissingFields(session.flatEvidence);
+      session.status = 'complete';
+    }
+
+    const gapsToUse = hasLicense ? [] : (gaps ?? getCoverageGaps(session.flatEvidence));
 
     if (gapsToUse.length === 0) {
       // All coverage fields established or hypothesized
