@@ -70,7 +70,7 @@ export default function ApplyPage() {
   const licenseInputRef = useRef<HTMLInputElement>(null);
   const workshopInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize or restore session
+  // Initialize or restore session & mandatory applicant authentication
   useEffect(() => {
     let existingSession = localStorage.getItem('fundflow_session_id');
     if (!existingSession) {
@@ -78,6 +78,28 @@ export default function ApplyPage() {
       localStorage.setItem('fundflow_session_id', existingSession);
     }
     setSessionId(existingSession);
+
+    const savedUserStr = localStorage.getItem('fundflow_applicant_user');
+    if (savedUserStr) {
+      try {
+        const parsed = JSON.parse(savedUserStr);
+        if (parsed.name && (parsed.email || parsed.phone) && parsed.businessName) {
+          setCurrentUser(parsed);
+          setLoginForm({
+            name: parsed.name || '',
+            email: parsed.email || '',
+            phone: parsed.phone || '',
+            businessName: parsed.businessName || '',
+          });
+        } else {
+          setLoginModalOpen(true);
+        }
+      } catch {
+        setLoginModalOpen(true);
+      }
+    } else {
+      setLoginModalOpen(true);
+    }
 
     // Initial greeting
     sendMessage('', existingSession, 'en', true);
@@ -90,6 +112,11 @@ export default function ApplyPage() {
   // Voice recording logic
   const startRecording = async () => {
     setIsInputHubOpen(false);
+    if (!currentUser) {
+      setLoginModalOpen(true);
+      setError('Applicant sign-in required before recording voice notes.');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const supportedType = [
@@ -213,6 +240,13 @@ export default function ApplyPage() {
   ) => {
     setLoading(true);
     setError(null);
+
+    if (!isInitial && !currentUser) {
+      setLoginModalOpen(true);
+      setError('Applicant sign-in required before submitting messages or uploads.');
+      setLoading(false);
+      return;
+    }
 
     const activeUserId = currentUser?.userId || 'web-applicant';
 
@@ -1032,22 +1066,35 @@ export default function ApplyPage() {
 
       {/* APPLICANT LOGIN & PROFILE MODAL */}
       {loginModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111723] border border-slate-800 rounded-xl p-6 w-full max-w-md space-y-4 text-slate-100 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#111723] border border-blue-500/30 rounded-xl p-6 w-full max-w-md space-y-4 text-slate-100 shadow-2xl animate-fade-in">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">👤</span>
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-lg bg-blue-600/20 text-blue-400 text-lg">👤</span>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Applicant Profile & Supabase Sync</h3>
-                  <p className="text-[11px] text-slate-400">Identify who is filling out this application to link voice, text, & photo evidence in Supabase.</p>
+                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                    {currentUser ? 'Update Applicant Profile' : 'Mandatory Applicant Registration'}
+                    {!currentUser && (
+                      <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        Required
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    {currentUser
+                      ? 'Update your details to sync application data in Supabase.'
+                      : 'Register your applicant identity to start filling out your application and link your voice, text & photo submissions.'}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setLoginModalOpen(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold"
-              >
-                ✕
-              </button>
+              {currentUser && (
+                <button
+                  onClick={() => setLoginModalOpen(false)}
+                  className="text-slate-400 hover:text-white text-lg font-bold p-1"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-3.5 text-xs">
@@ -1088,18 +1135,23 @@ export default function ApplyPage() {
               </div>
 
               <div className="pt-2 flex items-center gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setLoginModalOpen(false)}
-                  className="px-3.5 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs"
-                >
-                  Cancel
-                </button>
+                {currentUser && (
+                  <button
+                    type="button"
+                    onClick={() => setLoginModalOpen(false)}
+                    className="px-3.5 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs"
+                  >
+                    Cancel
+                  </button>
+                )}
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/20"
                 >
-                  <span>Save Profile & Sync Supabase</span>
+                  <span>Start Application & Save Profile</span>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
                 </button>
               </div>
             </form>
