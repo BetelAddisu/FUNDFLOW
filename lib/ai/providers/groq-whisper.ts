@@ -39,9 +39,10 @@ export class GroqWhisperVoiceProvider implements VoiceProvider {
     formData.append('file', audioBlob, filename);
     formData.append('model', 'whisper-large-v3-turbo');
     formData.append('response_format', 'json');
+    formData.append('prompt', 'SME business funding application recording in Ethiopia. English, Amharic (አማርኛ), Afaan Oromoo.');
+
     // Pass language hint if not English (improves accuracy)
     if (language && language !== 'en') {
-      // Groq whisper uses ISO-639-1 codes: am = Amharic, om = Oromo (not officially supported but worth trying)
       formData.append('language', language === 'am' ? 'am' : language === 'om' ? 'om' : language);
     }
 
