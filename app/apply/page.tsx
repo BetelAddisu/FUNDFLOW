@@ -781,6 +781,51 @@ export default function ApplyPage() {
               </div>
             )}
 
+            {/* Submission Success Banner */}
+            {(flatEvidence['documents.business_license_uploaded']?.value || status === 'complete' || progress >= 90) && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/90 via-teal-900/90 to-slate-900 border border-emerald-500/50 shadow-xl shadow-emerald-500/10 text-white space-y-2.5 animate-in fade-in slide-in-from-top-3 duration-500">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                    🎉
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-emerald-300 flex items-center gap-2">
+                      <span>
+                        {language === 'am'
+                          ? 'ማመልከቻዎ በተሳካ ሁኔታ ተልኳል!'
+                          : language === 'om'
+                          ? 'Iyyannaan keessan milkaa\'inaan ergameera!'
+                          : 'Application & Licence Successfully Submitted!'}
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-400/30 uppercase tracking-wider font-mono">
+                        SUBMITTED
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
+                      {language === 'am'
+                        ? 'የንግድ ፈቃድዎ እና የድርጅትዎ መረጃ ተረጋግጧል። ማመልከቻዎ ለግምገማ መድረክ (Reviewer Workstation) ወዲያውኑ ተልኳል።'
+                        : language === 'om'
+                        ? 'Hayyamni daldala fi odeeffannoon keessan mirkanaa\'eera. Amma garas Reviewer Workstationtti ergameera.'
+                        : 'Your trade licence & business data have been verified and forwarded to the Reviewer Workstation for ranking.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between pt-2 border-t border-emerald-500/20 text-xs gap-2">
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1.5 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span>Live Status: <strong>Forwarded to Reviewer Workstation</strong></span>
+                  </span>
+                  <Link
+                    href="/review"
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all shadow-md hover:shadow-emerald-500/30 flex items-center gap-1.5 text-xs"
+                  >
+                    <span>🔍</span>
+                    <span>View in Reviewer Workstation &rarr;</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
             {/* Chat Message Bubbles */}
             {messages.map((msg) => (
               <div

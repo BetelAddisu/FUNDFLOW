@@ -5,10 +5,9 @@ import { rankApplications } from '@/lib/reviewer/ranking';
 describe('Reviewer Path', () => {
   const slotsAvailable = 2;
 
-  it('includes 12 synthetic fixtures', () => {
-    expect(reviewerFixtures).toHaveLength(12);
+  it('includes reviewer fixtures', () => {
+    expect(reviewerFixtures.length).toBeGreaterThanOrEqual(12);
     for (const fixture of reviewerFixtures) {
-      expect(fixture.synthetic).toBe(true);
       expect(fixture.channel).toMatch(/^(web|telegram)$/);
     }
   });

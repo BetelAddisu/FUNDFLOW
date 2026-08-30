@@ -2,6 +2,38 @@ import { ReviewerFixture } from './types';
 
 export const reviewerFixtures: ReviewerFixture[] = [
   {
+    id: 'app-nahom',
+    channel: 'web',
+    synthetic: false,
+    metadata: {
+      companyName: 'ናሆም የኤሌክትሮኒክስ ጥገና (Nahom Electronics Repair)',
+      businessType: 'የኤሌክትሮኒክስ ጥገና (Electronics Micro-Soldering)',
+      region: 'አዲስ አበባ (+251 911 123456)',
+      yearsInOperation: 3,
+      language: 'am',
+      submissionDate: '2026-08-30',
+      licensePhotoUrl: '/demo/license-nahom.jpg',
+      workshopPhotoUrl: '/demo/workshop-nahom.jpg',
+    },
+    input: {
+      sales_growth_pct: 42,
+      total_employees: 3,
+      uniqueness: 'different_from_competitors',
+      market_served: 'local_only',
+      local_sourcing_pct: 30,
+      ownership: 'neither',
+      women_employee_pct: 0,
+      youth_employee_pct: 66,
+      expected_results_count: 3,
+      job_count: 255, // 255,000 Birr requested for Hot Air Soldering Station (180k) & Digital Microscope (75k)
+      investment_readiness: 28,
+      management_team_size: 3,
+      impact_category: 'both_social_env',
+      legally_registered_and_years: true,
+      privately_owned: true,
+    },
+  },
+  {
     id: 'app-001',
     channel: 'web',
     synthetic: true,
