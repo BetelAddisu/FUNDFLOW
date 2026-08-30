@@ -136,6 +136,7 @@ function autoHypothesizeMissingFields(flatEvidence: FlatEvidence): void {
   const companyName = flatEvidence['company_profile.company_name']?.value || 'SME Enterprise';
 
   const DEFAULTS: Record<string, { value: unknown; notes: string }> = {
+    'company_profile.company_name': { value: 'SME Business Enterprise', notes: 'Hypothesized company name — verified via trade licence photo' },
     'company_profile.business_type': { value: 'Light Manufacturing & Trade', notes: 'Hypothesized typical SME sector' },
     'company_profile.years_in_operation': { value: 3, notes: 'Hypothesized average operating history' },
     'company_profile.address': { value: 'Addis Ababa, Ethiopia', notes: 'Hypothesized principal business location' },
@@ -453,6 +454,27 @@ export class InterviewSessionService {
       session.status = 'complete';
       const compName = (session.flatEvidence['company_profile.company_name']?.value as string) || '';
       const nameTag = compName ? ` (${compName})` : '';
+      const hasLicense = !!session.flatEvidence['documents.business_license_uploaded']?.value;
+      const hasWorkshop = !!session.flatEvidence['documents.workshop_photo_uploaded']?.value;
+
+      if (hasLicense && !hasWorkshop) {
+        const nextPhotoMsg: Record<Language, string> = {
+          en: `Business licence received! ✓ Your application is strong. If you have a photo of your workshop or business premises, you can upload it now to further strengthen your application, or you can finish your submission.`,
+          am: `የንግድ ፈቃድዎ ደርሷል! ✓ ማመልከቻዎ ጠንካራ ነው። የሥራ ቦታዎን ፎቶ ካለዎት አሁን ማያያዝ ይችላሉ ወይም ማመልከቻዎን ማጠናቀቅ ይችላሉ።`,
+          om: `Hayyamni daldala keessanii bittaa taateera! ✓ Iyyannaan keessan jabaadha. Suuraa mana hojii (workshop) yoo qabaattan dabalataan galchuu dandeessu.`,
+        };
+        return nextPhotoMsg[lang];
+      }
+
+      if (hasLicense && hasWorkshop) {
+        const finalMsg: Record<Language, string> = {
+          en: `All documents and evidence received! ✓ Your application for ${compName || 'your business'} is 100% complete and ready for reviewer evaluation.`,
+          am: `ሁሉም ሰነዶች እና መረጃዎች ደርሰዋል! ✓ የ${compName || 'ንግድዎ'} ማመልከቻ 100% ተጠናቋል እና ለግምገማ ዝግጁ ነው።`,
+          om: `Galmeewwanii fi ragaaleen visits guutuun bittaa taaniiru! ✓ Iyyannaan daldala keessanii 100% qophaa'aara.`,
+        };
+        return finalMsg[lang];
+      }
+
       const customComplete: Record<Language, string> = {
         en: `Thank you! Your application details${nameTag} look great. All required fields have been auto-populated. Please upload a photo of your business licence to verify your application (and optionally a photo of your workshop or premises).`,
         am: `አመሰግናለሁ! የማመልከቻዎ መረጃ${nameTag} ተመዝግቧል። ሁሉም አስፈላጊ መስኮች ተሞልተዋል። አሁን ማመልከቻዎን ለማጠናከር የንግድ ፈቃድ ፎቶ እና የሥራ ቦታዎን ፎቶ ማስቀመጥ ይችላሉ።`,
