@@ -24,6 +24,148 @@ interface ApplicantUser {
   businessName: string;
 }
 
+const FORM_UI_I18N: Record<Language, {
+  headerTitle: string;
+  schemeTag: string;
+  exitIntake: string;
+  readinessLabel: string;
+  complete: string;
+  liveFormHeader: string;
+  autoFilledCount: (count: number) => string;
+  fieldsNeededCount: (count: number) => string;
+  tabLiveForm: string;
+  tabAuditLog: string;
+  tabSdgs: string;
+  badgeConfirmed: string;
+  badgeAssumed: string;
+  badgeNeeded: string;
+  field1Label: string;
+  field1Sub: string;
+  field1Placeholder: string;
+  field2Label: string;
+  field2Sub: string;
+  field2Placeholder: string;
+  field3Label: string;
+  field3Sub: string;
+  field3Placeholder: string;
+  field4Label: string;
+  field4Sub: string;
+  field4Placeholder: string;
+  field5Label: string;
+  field5NotSet: string;
+  field6Label: string;
+  field6PhotoAttached: string;
+  field6Awaiting: string;
+  auditEmpty: string;
+  verificationAlert: string;
+}> = {
+  en: {
+    headerTitle: 'FUNDflow Application Intake',
+    schemeTag: 'SME Support Scheme',
+    exitIntake: '← Exit Intake',
+    readinessLabel: 'Readiness:',
+    complete: 'Complete',
+    liveFormHeader: 'Live Application Form',
+    autoFilledCount: (c) => `${c} fields auto-filled`,
+    fieldsNeededCount: (c) => `${c} fields needed`,
+    tabLiveForm: '📋 Live Form',
+    tabAuditLog: '🛡️ Audit Log',
+    tabSdgs: '🌱 SDGs',
+    badgeConfirmed: '✔ Confirmed',
+    badgeAssumed: '◈ Assumed',
+    badgeNeeded: '⏳ Needed',
+    field1Label: 'Business Legal Name & Location',
+    field1Sub: 'Official trade name, sector, and registered location.',
+    field1Placeholder: 'Awaiting business name from chat or document upload...',
+    field2Label: 'What problem do you need help with?',
+    field2Sub: 'The need in your community or business that this project addresses.',
+    field2Placeholder: 'Describe your business problem or talk to the assistant to auto-fill...',
+    field3Label: 'What will the money be used for?',
+    field3Sub: 'What you will buy, build, run or pay for (equipment, inventory, payroll).',
+    field3Placeholder: 'Be concrete — this is what the funding decision is made on.',
+    field4Label: 'Project description & impact',
+    field4Sub: 'What the project does and the impact it will have on beneficiaries.',
+    field4Placeholder: 'A few sentences on enterprise operations, employees, and community impact.',
+    field5Label: 'Funding Requested',
+    field5NotSet: 'Not set',
+    field6Label: 'License / Registration',
+    field6PhotoAttached: 'License Photo Attached',
+    field6Awaiting: 'Awaiting Permit',
+    auditEmpty: 'No structured evidence extracted yet. Enter text, record voice, or upload audio/photos.',
+    verificationAlert: 'Verification Alert',
+  },
+  am: {
+    headerTitle: 'የFUNDflow ማመልከቻ መሙያ',
+    schemeTag: 'የኤስኤምኢ ድጋፍ ፕሮግራም',
+    exitIntake: '← ውጣ',
+    readinessLabel: 'ዝግጁነት:',
+    complete: 'ተጠናቋል',
+    liveFormHeader: 'የቀጥታ ማመልከቻ ቅጽ',
+    autoFilledCount: (c) => `${c} መስኮች በራስ-ሰር ተሞልተዋል`,
+    fieldsNeededCount: (c) => `${c} መስኮች ይፈለጋሉ`,
+    tabLiveForm: '📋 የቀጥታ ቅጽ',
+    tabAuditLog: '🛡️ የምርመራ ምዝግብ',
+    tabSdgs: '🌱 SDGs',
+    badgeConfirmed: '✔ ተረጋግጧል',
+    badgeAssumed: '◈ የታሰበ',
+    badgeNeeded: '⏳ ያስፈልጋል',
+    field1Label: 'የድርጅቱ ህጋዊ ስም እና አድራሻ',
+    field1Sub: 'ይፋዊ የንግድ ስም፣ ዘርፍ እና የተመዘገበበት ቦታ።',
+    field1Placeholder: 'የድርጅቱን ስም በውይይት ወይም ሰነድ በመላክ ይጠብቁ...',
+    field2Label: 'ምን ዓይነት ችግር ለመፍታት ይፈልጋሉ?',
+    field2Sub: 'ይህ ፕሮጀክት የሚፈታው በማህበረሰብዎ ወይም በንግድዎ ያለ የፍላጎት ችግር።',
+    field2Placeholder: 'የንግድ ችግርዎን ይግለጹ ወይም ከረዳቱ ጋር በመወያየት ይሙሉ...',
+    field3Label: 'ገንዘቡ ለምን ጥቅም ላይ ይውላል?',
+    field3Sub: 'የሚገዙት፣ የሚገነቡት፣ የሚያንቀሳቅሱት ወይም የሚከፍሉት (መሳሪያዎች፣ እቃዎች፣ ደመወዝ)።',
+    field3Placeholder: 'ግልጽ ይሁኑ — የገንዘብ ድጋፍ ውሳኔ የሚሰጠው በዚህ ላይ ነው።',
+    field4Label: 'የፕሮጀክት መግለጫ እና ተጽዕኖ',
+    field4Sub: 'ፕሮጀክቱ የሚያከናውነው እና በተጠቃሚዎች ላይ የሚያመጣው ተጽዕኖ።',
+    field4Placeholder: 'ስለ ድርጅቱ አሰራር፣ ሰራተኞች እና ማህበረሰብ ተጽዕኖ በጥቂት አረፍተ ነገሮች።',
+    field5Label: 'የተጠየቀው የገንዘብ ድጋፍ',
+    field5NotSet: 'ልዩ አልሆነም',
+    field6Label: 'የንግድ ፈቃድ / ምዝገባ',
+    field6PhotoAttached: 'የፈቃድ ፎቶ ተያይዟል',
+    field6Awaiting: 'ፈቃድ ይጠበቃል',
+    auditEmpty: 'እስካሁን ምንም የተደራጀ መረጃ አልወጣም። ጽሑፍ ይጻፉ፣ ድምጽ ይቅረጹ ወይም ፎቶ ያያይዙ።',
+    verificationAlert: 'የማረጋገጫ ማስጠንቀቂያ',
+  },
+  om: {
+    headerTitle: 'Galmee Iyyannaa FUNDflow',
+    schemeTag: 'Sagantaa Deggersa SME',
+    exitIntake: '← Ba\'i',
+    readinessLabel: 'Qophii:',
+    complete: 'Guutameera',
+    liveFormHeader: 'Foomii Iyyannaa Kallattii',
+    autoFilledCount: (c) => `${c} dirreewwan ofiin guutaman`,
+    fieldsNeededCount: (c) => `${c} dirreewwan barbaachisan`,
+    tabLiveForm: '📋 Foomii Kallattii',
+    tabAuditLog: '🛡️ Galmee Qorannoo',
+    tabSdgs: '🌱 SDGs',
+    badgeConfirmed: '✔ Mirkanaa\'eera',
+    badgeAssumed: '◈ Tilmaamameera',
+    badgeNeeded: '⏳ Barbaachisa',
+    field1Label: 'Maqaa Seeraa Dhaabbata fi Dhaabbannoo',
+    field1Sub: 'Maqaa daldala seeraa, damee fi bakka galmeeffame.',
+    field1Placeholder: 'Maqaa dhaabbataa haasaa ykn galmee erguun eegaa...',
+    field2Label: 'Rakkoo kam furuuf gargaarsa barbaaddu?',
+    field2Sub: 'Fedhii hawaasa keessaniif ykn daldala keessaniif sagantaan kun furu.',
+    field2Placeholder: 'Rakkoo daldala keessanii ibsaa ykn gargaaraa wajjin haasa\'a...',
+    field3Label: 'Maallaqni kun maaliif fayyada?',
+    field3Sub: 'Waan bitattan, ijaartan, deemstan ykn kafaltan (meeshaa, qabeenya, mindaa).',
+    field3Placeholder: 'Kallattiin ibsaa — murteon maallaqaa kan irratti kennamu kanaani.',
+    field4Label: 'Ibsa Pirojektiifi Dhiibbaa',
+    field4Sub: 'Pirojektichi waan hojjetu fi dhiibbaa inni fayyadamtoota irratti fidu.',
+    field4Placeholder: 'Hojii dhaabbataa, hojjettoota fi dhiibbaa hawaasaa irratti barreeffama gabaabaa.',
+    field5Label: 'Gargaarsa Maallaqaa Gaafatame',
+    field5NotSet: 'Hin murtaa\'in',
+    field6Label: 'Hayyama Daldalaa / Galmee',
+    field6PhotoAttached: 'Suuraan Hayyamaa Qabsiifameera',
+    field6Awaiting: 'Hayyama Eegaa',
+    auditEmpty: 'Hangafa odeeffannoon qindaa\'e hin argamne. Barreeffama galchaa, sagalee waraabaa ykn suuraa qabsiisaa.',
+    verificationAlert: 'Akeekkachiisa Mirkanneessaa',
+  },
+};
+
 export default function ApplyPage() {
   const [sessionId, setSessionId] = useState<string>('');
   const [language, setLanguage] = useState<Language>('en');
@@ -410,14 +552,14 @@ export default function ApplyPage() {
             href="/"
             className="px-2.5 py-1 rounded border border-slate-700 bg-slate-800/80 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
           >
-            ← Exit Intake
+            {FORM_UI_I18N[language].exitIntake}
           </Link>
           <div className="h-4 w-px bg-slate-800"></div>
           <div>
             <h1 className="font-semibold text-white text-sm md:text-base flex items-center gap-2">
-              FUNDflow Application Intake
+              {FORM_UI_I18N[language].headerTitle}
               <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                SME Support Scheme
+                {FORM_UI_I18N[language].schemeTag}
               </span>
             </h1>
           </div>
@@ -453,7 +595,7 @@ export default function ApplyPage() {
           </div>
 
           <div className="hidden sm:flex items-center gap-2 text-xs border-l border-slate-800 pl-4">
-            <span className="text-slate-400 font-medium">Readiness:</span>
+            <span className="text-slate-400 font-medium">{FORM_UI_I18N[language].readinessLabel}</span>
             <span className="font-bold text-blue-400">{progress}%</span>
             <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
@@ -828,16 +970,16 @@ export default function ApplyPage() {
             <div className="flex items-center justify-between text-xs font-medium">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <span className="text-slate-200 font-semibold uppercase tracking-wider">Live Application Form</span>
+                <span className="text-slate-200 font-semibold uppercase tracking-wider">{FORM_UI_I18N[language].liveFormHeader}</span>
               </div>
-              <span className="font-bold text-blue-400">{progress}% Complete</span>
+              <span className="font-bold text-blue-400">{progress}% {FORM_UI_I18N[language].complete}</span>
             </div>
             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span>{Object.keys(flatEvidence).length} fields auto-filled</span>
-              <span>{gaps.length} fields needed</span>
+              <span>{FORM_UI_I18N[language].autoFilledCount(Object.keys(flatEvidence).length)}</span>
+              <span>{FORM_UI_I18N[language].fieldsNeededCount(gaps.length)}</span>
             </div>
           </div>
 
@@ -851,7 +993,7 @@ export default function ApplyPage() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <span>📋 Live Form</span>
+              <span>{FORM_UI_I18N[language].tabLiveForm}</span>
             </button>
 
             <button
@@ -862,7 +1004,7 @@ export default function ApplyPage() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <span>🛡️ Audit Log</span>
+              <span>{FORM_UI_I18N[language].tabAuditLog}</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
                 {Object.keys(flatEvidence).length}
               </span>
@@ -877,7 +1019,7 @@ export default function ApplyPage() {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <span>🌱 SDGs</span>
+                <span>{FORM_UI_I18N[language].tabSdgs}</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400">
                   {sdgSuggestions.length}
                 </span>
@@ -895,20 +1037,20 @@ export default function ApplyPage() {
                 {/* Form Field 1: Business Name & Legal Entity */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-200 text-xs">Business Legal Name & Location</label>
+                    <label className="font-semibold text-slate-200 text-xs">{FORM_UI_I18N[language].field1Label}</label>
                     {(() => {
                       const e = flatEvidence['company_profile.company_name'] || flatEvidence['business.name'];
-                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
-                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
-                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{FORM_UI_I18N[language].badgeNeeded}</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{FORM_UI_I18N[language].badgeAssumed}</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{FORM_UI_I18N[language].badgeConfirmed}</span>;
                     })()}
                   </div>
-                  <p className="text-[11px] text-slate-400">Official trade name, sector, and registered location.</p>
+                  <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field1Sub}</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[42px] text-slate-200 leading-relaxed font-mono">
                     {flatEvidence['company_profile.company_name']?.value ||
                       flatEvidence['business.name']?.value || (
                         <span className="text-slate-500 italic font-sans text-xs">
-                          Awaiting business name from chat or document upload...
+                          {FORM_UI_I18N[language].field1Placeholder}
                         </span>
                       )}
                   </div>
@@ -917,20 +1059,20 @@ export default function ApplyPage() {
                 {/* Form Field 2: Problem Statement */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-200 text-xs">What problem do you need help with?</label>
+                    <label className="font-semibold text-slate-200 text-xs">{FORM_UI_I18N[language].field2Label}</label>
                     {(() => {
                       const e = flatEvidence['business.problem_addressed'] || flatEvidence['project.problem'] || flatEvidence['intervention_requested.problem_to_be_addressed'];
-                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
-                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
-                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{FORM_UI_I18N[language].badgeNeeded}</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{FORM_UI_I18N[language].badgeAssumed}</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{FORM_UI_I18N[language].badgeConfirmed}</span>;
                     })()}
                   </div>
-                  <p className="text-[11px] text-slate-400">The need in your community or business that this project addresses.</p>
+                  <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field2Sub}</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
                     {flatEvidence['business.problem_addressed']?.value ||
                       flatEvidence['project.problem']?.value || (
                         <span className="text-slate-500 italic text-xs">
-                          Describe your business problem or talk to the assistant to auto-fill...
+                          {FORM_UI_I18N[language].field2Placeholder}
                         </span>
                       )}
                   </div>
@@ -939,20 +1081,20 @@ export default function ApplyPage() {
                 {/* Form Field 3: Use of Funds */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-200 text-xs">What will the money be used for?</label>
+                    <label className="font-semibold text-slate-200 text-xs">{FORM_UI_I18N[language].field3Label}</label>
                     {(() => {
                       const e = flatEvidence['financials.use_of_funds'] || flatEvidence['funding.purpose'] || flatEvidence['intervention_requested.expected_results'];
-                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
-                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
-                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{FORM_UI_I18N[language].badgeNeeded}</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{FORM_UI_I18N[language].badgeAssumed}</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{FORM_UI_I18N[language].badgeConfirmed}</span>;
                     })()}
                   </div>
-                  <p className="text-[11px] text-slate-400">What you will buy, build, run or pay for (equipment, inventory, payroll).</p>
+                  <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field3Sub}</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
                     {flatEvidence['financials.use_of_funds']?.value ||
                       flatEvidence['funding.purpose']?.value || (
                         <span className="text-slate-500 italic text-xs">
-                          Be concrete — this is what the funding decision is made on.
+                          {FORM_UI_I18N[language].field3Placeholder}
                         </span>
                       )}
                   </div>
@@ -961,20 +1103,20 @@ export default function ApplyPage() {
                 {/* Form Field 4: Project Description & Impact */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-200 text-xs">Project description & impact</label>
+                    <label className="font-semibold text-slate-200 text-xs">{FORM_UI_I18N[language].field4Label}</label>
                     {(() => {
                       const e = flatEvidence['business.description'] || flatEvidence['company_profile.business_type'] || flatEvidence['company_overview.development_since_start'];
-                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
-                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
-                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{FORM_UI_I18N[language].badgeNeeded}</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{FORM_UI_I18N[language].badgeAssumed}</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{FORM_UI_I18N[language].badgeConfirmed}</span>;
                     })()}
                   </div>
-                  <p className="text-[11px] text-slate-400">What the project does and the impact it will have on beneficiaries.</p>
+                  <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field4Sub}</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
                     {flatEvidence['business.description']?.value ||
                       flatEvidence['company_profile.business_type']?.value || (
                         <span className="text-slate-500 italic text-xs">
-                          A few sentences on enterprise operations, employees, and community impact.
+                          {FORM_UI_I18N[language].field4Placeholder}
                         </span>
                       )}
                   </div>
@@ -983,18 +1125,18 @@ export default function ApplyPage() {
                 {/* Form Field 5: Requested Amount & License */}
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-300 text-[11px]">Funding Requested</label>
+                    <label className="font-semibold text-slate-300 text-[11px]">{FORM_UI_I18N[language].field5Label}</label>
                     <div className="p-2.5 rounded bg-[#172030] border border-slate-700 text-slate-200 font-mono text-xs">
                       {flatEvidence['financials.requested_amount']?.value ||
                         flatEvidence['financials.funding_requested']?.value ||
-                        'Not set'}
+                        FORM_UI_I18N[language].field5NotSet}
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-300 text-[11px]">License / Registration</label>
+                    <label className="font-semibold text-slate-300 text-[11px]">{FORM_UI_I18N[language].field6Label}</label>
                     <div className="p-2.5 rounded bg-[#172030] border border-slate-700 text-slate-200 font-mono text-xs truncate">
                       {flatEvidence['company_profile.business_registration_number']?.value ||
-                        (licensePhoto ? 'License Photo Attached' : 'Awaiting Permit')}
+                        (licensePhoto ? FORM_UI_I18N[language].field6PhotoAttached : FORM_UI_I18N[language].field6Awaiting)}
                     </div>
                   </div>
                 </div>
@@ -1007,7 +1149,7 @@ export default function ApplyPage() {
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
                 {Object.keys(flatEvidence).length === 0 ? (
                   <div className="text-center py-8 text-slate-500 italic text-xs">
-                    No structured evidence extracted yet. Enter text, record voice, or upload audio/photos.
+                    {FORM_UI_I18N[language].auditEmpty}
                   </div>
                 ) : (
                   Object.entries(flatEvidence).map(([key, item]: [string, any]) => (
