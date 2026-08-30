@@ -13,11 +13,11 @@ export function setVoiceProviders(providers: VoiceProvider[]) {
   voiceProviders = providers;
 }
 
-export async function transcribeWithFallback(audio: Buffer, language?: string): Promise<VoiceTranscriptionResult> {
+export async function transcribeWithFallback(audio: Buffer, language?: string, mimeType?: string): Promise<VoiceTranscriptionResult> {
   const start = Date.now();
   for (const provider of voiceProviders) {
     try {
-      const result = await provider.transcribe(audio, language);
+      const result = await provider.transcribe(audio, language, mimeType);
       result.latencyMs = Date.now() - start;
       result.provider = provider.name;
       return result;

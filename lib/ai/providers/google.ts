@@ -3,7 +3,7 @@ import { VoiceProvider, VoiceTranscriptionResult, VoiceProviderName } from '../t
 export class GoogleVoiceProvider implements VoiceProvider {
   name: VoiceProviderName = 'google';
 
-  async transcribe(audio: Buffer, language?: string): Promise<VoiceTranscriptionResult> {
+  async transcribe(audio: Buffer, language?: string, mimeType?: string): Promise<VoiceTranscriptionResult> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
@@ -20,7 +20,7 @@ export class GoogleVoiceProvider implements VoiceProvider {
             { text: prompt },
             {
               inline_data: {
-                mime_type: 'audio/wav',
+                mime_type: mimeType || 'audio/webm',
                 data: audioBase64,
               },
             },

@@ -10,6 +10,7 @@ import type { Language } from './types';
 import type { FlatEvidence, FlatEvidenceItem } from '@/lib/evidence/types';
 import type { Contradiction } from '@/lib/evidence/contradictions';
 import type { Gap } from '@/lib/evidence/gaps';
+import { saveApplicationSession } from '@/lib/supabase/service';
 
 // ── Session types ──────────────────────────────────────────────────────────────
 
@@ -198,7 +199,7 @@ export class InterviewSessionService {
 
     if (input.audio) {
       inputType = 'voice';
-      const transcription = await transcribeWithFallback(input.audio, lang);
+      const transcription = await transcribeWithFallback(input.audio, lang, input.audioMimeType);
       if (!transcription.text || transcription.provider === 'unresolved') {
         // Voice failed — preserve state, return clear error
         return {
@@ -448,6 +449,19 @@ Keep your response under 2 sentences.`;
     } catch {
       // SDG suggestions are non-critical
     }
+
+    // Sync session state to Supabase asynchronously
+    saveApplicationSession({
+      sessionId: session.sessionId,
+      userId: session.userId,
+      language: session.language,
+      channel: session.channel,
+      flatEvidence: session.flatEvidence,
+      gaps: (gaps as Gap[]) || [],
+      contradictions: session.contradictions || [],
+      progress: this.calcProgress(session.flatEvidence),
+      status: session.status,
+    }).catch(() => {});
 
     return {
       text,

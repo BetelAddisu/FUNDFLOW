@@ -14,6 +14,16 @@ interface ChatMessage {
   attachmentName?: string;
 }
 
+import { saveApplicantUser, saveApplicationMessage, saveApplicationSession } from '@/lib/supabase/service';
+
+interface ApplicantUser {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  businessName: string;
+}
+
 export default function ApplyPage() {
   const [sessionId, setSessionId] = useState<string>('');
   const [language, setLanguage] = useState<Language>('en');
@@ -23,6 +33,16 @@ export default function ApplyPage() {
   const [licensePhoto, setLicensePhoto] = useState<File | null>(null);
   const [workshopPhoto, setWorkshopPhoto] = useState<File | null>(null);
   
+  // Applicant Authentication State
+  const [currentUser, setCurrentUser] = useState<ApplicantUser | null>(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginForm, setLoginForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    businessName: '',
+  });
+
   // Application State
   const [flatEvidence, setFlatEvidence] = useState<Record<string, any>>({});
   const [gaps, setGaps] = useState<any[]>([]);
@@ -34,7 +54,8 @@ export default function ApplyPage() {
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [activeTab, setActiveTab] = useState<'chat' | 'evidence' | 'gaps' | 'sdgs'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'form' | 'evidence' | 'gaps' | 'sdgs'>('chat');
+  const [rightConsoleTab, setRightConsoleTab] = useState<'form' | 'evidence' | 'sdgs'>('form');
   const [error, setError] = useState<string | null>(null);
 
   // Floating Input Hub State
@@ -71,7 +92,16 @@ export default function ApplyPage() {
     setIsInputHubOpen(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      const supportedType = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+      ].find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) || '';
+      mediaRecorderRef.current = supportedType
+        ? new MediaRecorder(stream, { mimeType: supportedType })
+        : new MediaRecorder(stream);
+      const actualMimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (e) => {
@@ -82,8 +112,9 @@ export default function ApplyPage() {
 
       mediaRecorderRef.current.onstop = () => {
         if (audioChunksRef.current.length > 0) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-          const file = new File([audioBlob], `voice-note-${Date.now()}.wav`, { type: 'audio/wav' });
+          const ext = actualMimeType.split('/')[1]?.split(';')[0] || 'webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
+          const file = new File([audioBlob], `voice-note-${Date.now()}.${ext}`, { type: actualMimeType });
           setAudioFile(file);
         }
       };
@@ -123,6 +154,54 @@ export default function ApplyPage() {
     await sendMessage(`/lang ${newLang}`, sessionId, newLang);
   };
 
+  // Helper to convert files to Data URL for Supabase storage persistence
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string) || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginForm.name || (!loginForm.email && !loginForm.phone) || !loginForm.businessName) {
+      setError('Please provide your Name, Email or Phone, and Business Name.');
+      return;
+    }
+    const uid = currentUser?.userId || `usr_${Math.random().toString(36).substring(2, 9)}`;
+    const userObj: ApplicantUser = {
+      userId: uid,
+      name: loginForm.name,
+      email: loginForm.email,
+      phone: loginForm.phone,
+      businessName: loginForm.businessName,
+    };
+    setCurrentUser(userObj);
+    localStorage.setItem('fundflow_applicant_user', JSON.stringify(userObj));
+    setLoginModalOpen(false);
+
+    // Save applicant user profile to Supabase
+    await saveApplicantUser(userObj);
+
+    // Sync application session with user details
+    await saveApplicationSession({
+      sessionId,
+      userId: uid,
+      applicantName: userObj.name,
+      applicantEmail: userObj.email,
+      applicantPhone: userObj.phone,
+      businessName: userObj.businessName,
+      language,
+      flatEvidence,
+      gaps,
+      contradictions,
+      progress,
+      status: 'in_progress',
+    });
+  };
+
   const sendMessage = async (
     text: string,
     sessId: string,
@@ -135,8 +214,10 @@ export default function ApplyPage() {
     setLoading(true);
     setError(null);
 
+    const activeUserId = currentUser?.userId || 'web-applicant';
+
     const formData = new FormData();
-    formData.append('userId', 'web-applicant');
+    formData.append('userId', activeUserId);
     formData.append('sessionId', sessId || sessionId);
     if (text) formData.append('text', text);
     
@@ -161,17 +242,39 @@ export default function ApplyPage() {
         attachmentName = curLicense ? `License: ${curLicense.name}` : `Workshop: ${curWorkshop?.name}`;
       }
 
+      const msgId = `msg_${Math.random().toString(36).substring(2, 9)}`;
+      const userContent = text || (curAudio ? `[Audio File Sent: ${curAudio.name}]` : '[Photo Uploaded]');
+
       setMessages((prev) => [
         ...prev,
         {
-          id: Math.random().toString(36).substring(2),
+          id: msgId,
           role: 'user',
-          content: text || (curAudio ? `[Audio File Sent: ${curAudio.name}]` : '[Photo Uploaded]'),
+          content: userContent,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           inputType: msgType,
           attachmentName,
         },
       ]);
+
+      // Convert attachments to Data URL & persist message to Supabase
+      (async () => {
+        let attachmentUrl: string | undefined;
+        if (curAudio) attachmentUrl = await fileToDataUrl(curAudio);
+        else if (curLicense) attachmentUrl = await fileToDataUrl(curLicense);
+        else if (curWorkshop) attachmentUrl = await fileToDataUrl(curWorkshop);
+
+        saveApplicationMessage({
+          id: msgId,
+          sessionId: sessId || sessionId,
+          userId: activeUserId,
+          role: 'user',
+          content: userContent,
+          inputType: msgType,
+          attachmentName,
+          attachmentUrl,
+        }).catch(() => {});
+      })();
     }
 
     try {
@@ -191,15 +294,26 @@ export default function ApplyPage() {
       }
 
       if (data.text) {
+        const assistantMsgId = `msg_${Math.random().toString(36).substring(2, 9)}`;
         setMessages((prev) => [
           ...prev,
           {
-            id: Math.random().toString(36).substring(2),
+            id: assistantMsgId,
             role: 'assistant',
             content: data.text,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
+
+        // Save assistant message to Supabase
+        saveApplicationMessage({
+          id: assistantMsgId,
+          sessionId: sessId || sessionId,
+          userId: activeUserId,
+          role: 'assistant',
+          content: data.text,
+          inputType: 'text',
+        }).catch(() => {});
       }
 
       if (data.evidence) setFlatEvidence(data.evidence);
@@ -207,6 +321,22 @@ export default function ApplyPage() {
       if (data.contradictions) setContradictions(data.contradictions);
       if (data.sdgSuggestions) setSdgSuggestions(data.sdgSuggestions);
       if (data.progress !== undefined) setProgress(data.progress);
+
+      // Save overall application session to Supabase
+      saveApplicationSession({
+        sessionId: sessId || sessionId,
+        userId: activeUserId,
+        applicantName: currentUser?.name,
+        applicantEmail: currentUser?.email,
+        applicantPhone: currentUser?.phone,
+        businessName: currentUser?.businessName,
+        language: lang,
+        flatEvidence: data.evidence || flatEvidence,
+        gaps: data.gaps || gaps,
+        contradictions: data.contradictions || contradictions,
+        progress: data.progress !== undefined ? data.progress : progress,
+        status: 'in_progress',
+      }).catch(() => {});
 
       setInputText('');
       setAudioFile(null);
@@ -294,6 +424,28 @@ export default function ApplyPage() {
             <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
             </div>
+          </div>
+
+          {/* Applicant Account Login / Profile Indicator */}
+          <div className="border-l border-slate-800 pl-4 flex items-center">
+            {currentUser ? (
+              <button
+                onClick={() => setLoginModalOpen(true)}
+                className="flex items-center gap-2 px-2.5 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="truncate max-w-[120px]">{currentUser.name}</span>
+                <span className="text-[10px] text-emerald-300/70 hidden md:inline">({currentUser.businessName || 'Applicant'})</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setLoginModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded border border-blue-500/40 bg-blue-600/10 text-xs font-semibold text-blue-400 hover:bg-blue-600/20 transition-colors"
+              >
+                <span>👤</span>
+                <span>Sign In / Identify Applicant</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -634,100 +786,338 @@ export default function ApplyPage() {
           </div>
         </div>
 
-        {/* Right Console: Evidence Provenance & Application Status */}
-        <div className="lg:col-span-4 flex flex-col h-[calc(100vh-5.5rem)] gap-4 overflow-hidden">
+        {/* Right Console: Live Application Form Visibility & Audit Log */}
+        <div className="lg:col-span-4 flex flex-col h-[calc(100vh-5.5rem)] gap-3 overflow-hidden">
           
-          {/* Readiness Card */}
-          <div className="bg-[#111723] p-4 rounded-lg border border-slate-800 space-y-2">
+          {/* Intake Progress Header */}
+          <div className="bg-[#111723] p-3.5 rounded-lg border border-slate-800 space-y-2">
             <div className="flex items-center justify-between text-xs font-medium">
-              <span className="text-slate-300">Intake Completion</span>
-              <span className="font-bold text-blue-400">{progress}%</span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-slate-200 font-semibold uppercase tracking-wider">Live Application Form</span>
+              </div>
+              <span className="font-bold text-blue-400">{progress}% Complete</span>
             </div>
-            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }}></div>
             </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-              <span>Established: {Object.keys(flatEvidence).length} fields</span>
-              <span>Gaps: {gaps.length} fields</span>
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span>{Object.keys(flatEvidence).length} fields auto-filled</span>
+              <span>{gaps.length} fields needed</span>
             </div>
           </div>
 
-          {/* Evidence Provenance Panel */}
-          <div className="bg-[#111723] p-4 rounded-lg border border-slate-800 flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                Evidence Provenance Log
-              </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                Audit Trail
+          {/* Sub-Navigation Tabs */}
+          <div className="flex items-center gap-1 border-b border-slate-800 pb-1.5 text-xs font-medium">
+            <button
+              onClick={() => setRightConsoleTab('form')}
+              className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                rightConsoleTab === 'form'
+                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span>📋 Live Form</span>
+            </button>
+
+            <button
+              onClick={() => setRightConsoleTab('evidence')}
+              className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                rightConsoleTab === 'evidence'
+                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span>🛡️ Audit Log</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                {Object.keys(flatEvidence).length}
               </span>
-            </div>
+            </button>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-              {Object.keys(flatEvidence).length === 0 ? (
-                <div className="text-center py-8 text-slate-500 italic text-xs">
-                  No structured evidence extracted yet. Enter text, record voice, or upload audio/photos.
-                </div>
-              ) : (
-                Object.entries(flatEvidence).map(([key, item]: [string, any]) => (
-                  <div key={key} className="p-2.5 rounded bg-[#172030] border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-200 text-xs">
-                        {key.split('.').pop()?.replace(/_/g, ' ')}
-                      </span>
-                      <span
-                        className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
-                          item.state === 'document_supported'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : item.state === 'visually_observed'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : item.state === 'self_reported'
-                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        }`}
-                      >
-                        {item.state?.replace(/_/g, ' ')}
-                      </span>
-                    </div>
-
-                    <div className="text-slate-300 font-mono text-xs">
-                      {typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value)}
-                      {item.isApproximate && <span className="text-amber-400 text-[10px] font-sans ml-1">(approx)</span>}
-                    </div>
-
-                    {item.notes && <div className="text-[10px] text-slate-400 italic">{item.notes}</div>}
-                  </div>
-                ))
-              )}
-            </div>
+            {sdgSuggestions.length > 0 && (
+              <button
+                onClick={() => setRightConsoleTab('sdgs')}
+                className={`px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 ${
+                  rightConsoleTab === 'sdgs'
+                    ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>🌱 SDGs</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400">
+                  {sdgSuggestions.length}
+                </span>
+              </button>
+            )}
           </div>
 
-          {/* SDG Potential Alignment Card */}
-          {sdgSuggestions.length > 0 && (
-            <div className="bg-[#111723] p-3.5 rounded-lg border border-slate-800 space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <span>🌱</span> ImpactProtocol Alignment
+          {/* Main Content Area */}
+          <div className="bg-[#111723] p-4 rounded-lg border border-slate-800 flex-1 flex flex-col overflow-hidden">
+            
+            {/* TAB 1: LIVE APPLICATION FORM VIEW */}
+            {rightConsoleTab === 'form' && (
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+                
+                {/* Form Field 1: Business Name & Legal Entity */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-200 text-xs">Business Legal Name & Location</label>
+                    {flatEvidence['company_profile.company_name'] || flatEvidence['business.name'] ? (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        ✔ Auto-Filled
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        ⏳ Needed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">Official trade name, sector, and registered location.</p>
+                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[42px] text-slate-200 leading-relaxed font-mono">
+                    {flatEvidence['company_profile.company_name']?.value ||
+                      flatEvidence['business.name']?.value || (
+                        <span className="text-slate-500 italic font-sans text-xs">
+                          Awaiting business name from chat or document upload...
+                        </span>
+                      )}
+                  </div>
+                </div>
+
+                {/* Form Field 2: Problem Statement */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-200 text-xs">What problem do you need help with?</label>
+                    {flatEvidence['business.problem_addressed'] || flatEvidence['project.problem'] ? (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        ✔ Auto-Filled
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        ⏳ Needed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">The need in your community or business that this project addresses.</p>
+                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
+                    {flatEvidence['business.problem_addressed']?.value ||
+                      flatEvidence['project.problem']?.value || (
+                        <span className="text-slate-500 italic text-xs">
+                          Describe your business problem or talk to the assistant to auto-fill...
+                        </span>
+                      )}
+                  </div>
+                </div>
+
+                {/* Form Field 3: Use of Funds */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-200 text-xs">What will the money be used for?</label>
+                    {flatEvidence['financials.use_of_funds'] || flatEvidence['funding.purpose'] ? (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        ✔ Auto-Filled
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        ⏳ Needed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">What you will buy, build, run or pay for (equipment, inventory, payroll).</p>
+                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
+                    {flatEvidence['financials.use_of_funds']?.value ||
+                      flatEvidence['funding.purpose']?.value || (
+                        <span className="text-slate-500 italic text-xs">
+                          Be concrete — this is what the funding decision is made on.
+                        </span>
+                      )}
+                  </div>
+                </div>
+
+                {/* Form Field 4: Project Description & Impact */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-200 text-xs">Project description & impact</label>
+                    {flatEvidence['business.description'] || flatEvidence['company_profile.business_type'] ? (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        ✔ Auto-Filled
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        ⏳ Needed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">What the project does and the impact it will have on beneficiaries.</p>
+                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
+                    {flatEvidence['business.description']?.value ||
+                      flatEvidence['company_profile.business_type']?.value || (
+                        <span className="text-slate-500 italic text-xs">
+                          A few sentences on enterprise operations, employees, and community impact.
+                        </span>
+                      )}
+                  </div>
+                </div>
+
+                {/* Form Field 5: Requested Amount & License */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-300 text-[11px]">Funding Requested</label>
+                    <div className="p-2.5 rounded bg-[#172030] border border-slate-700 text-slate-200 font-mono text-xs">
+                      {flatEvidence['financials.requested_amount']?.value ||
+                        flatEvidence['financials.funding_requested']?.value ||
+                        'Not set'}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-300 text-[11px]">License / Registration</label>
+                    <div className="p-2.5 rounded bg-[#172030] border border-slate-700 text-slate-200 font-mono text-xs truncate">
+                      {flatEvidence['company_profile.business_registration_number']?.value ||
+                        (licensePhoto ? 'License Photo Attached' : 'Awaiting Permit')}
+                    </div>
+                  </div>
+                </div>
+
               </div>
-              <div className="space-y-1.5 max-h-28 overflow-y-auto">
+            )}
+
+            {/* TAB 2: AUDIT PROVENANCE LOG */}
+            {rightConsoleTab === 'evidence' && (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+                {Object.keys(flatEvidence).length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 italic text-xs">
+                    No structured evidence extracted yet. Enter text, record voice, or upload audio/photos.
+                  </div>
+                ) : (
+                  Object.entries(flatEvidence).map(([key, item]: [string, any]) => (
+                    <div key={key} className="p-2.5 rounded bg-[#172030] border border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-200 text-xs">
+                          {key.split('.').pop()?.replace(/_/g, ' ')}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                            item.state === 'document_supported'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : item.state === 'visually_observed'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : item.state === 'self_reported'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}
+                        >
+                          {item.state?.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+
+                      <div className="text-slate-300 font-mono text-xs">
+                        {typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value)}
+                        {item.isApproximate && <span className="text-amber-400 text-[10px] font-sans ml-1">(approx)</span>}
+                      </div>
+
+                      {item.notes && <div className="text-[10px] text-slate-400 italic">{item.notes}</div>}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: SDG IMPACT PROTOCOL */}
+            {rightConsoleTab === 'sdgs' && (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
                 {sdgSuggestions.map((s, idx) => (
-                  <div key={idx} className="p-2 rounded bg-[#172030] border border-slate-800 text-[11px] space-y-0.5">
+                  <div key={idx} className="p-2.5 rounded bg-[#172030] border border-slate-800 text-[11px] space-y-1">
                     <div className="font-semibold text-emerald-400 flex items-center justify-between">
                       <span>SDG {s.sdgId}: {s.title}</span>
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
                         {s.alignmentStatus}
                       </span>
                     </div>
-                    <p className="text-slate-400 text-[10px]">{s.reason}</p>
+                    <p className="text-slate-300 text-[11px] leading-relaxed">{s.reason}</p>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+
+          </div>
         </div>
       </div>
+
+      {/* APPLICANT LOGIN & PROFILE MODAL */}
+      {loginModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#111723] border border-slate-800 rounded-xl p-6 w-full max-w-md space-y-4 text-slate-100 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👤</span>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Applicant Profile & Supabase Sync</h3>
+                  <p className="text-[11px] text-slate-400">Identify who is filling out this application to link voice, text, & photo evidence in Supabase.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setLoginModalOpen(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={loginForm.name}
+                  onChange={(e) => setLoginForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Abebe Bekele"
+                  className="w-full bg-[#172030] border border-slate-700 rounded px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">Email Address or Phone *</label>
+                <input
+                  type="text"
+                  required
+                  value={loginForm.email || loginForm.phone}
+                  onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value, phone: e.target.value }))}
+                  placeholder="e.g. abebe@suntech.et or 0911234567"
+                  className="w-full bg-[#172030] border border-slate-700 rounded px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">Enterprise / Business Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={loginForm.businessName}
+                  onChange={(e) => setLoginForm((prev) => ({ ...prev, businessName: e.target.value }))}
+                  placeholder="e.g. SunTech Solar Solutions"
+                  className="w-full bg-[#172030] border border-slate-700 rounded px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setLoginModalOpen(false)}
+                  className="px-3.5 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <span>Save Profile & Sync Supabase</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

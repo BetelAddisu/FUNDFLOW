@@ -15,7 +15,7 @@ export type ReasoningProviderName = 'primary' | 'groq' | 'openrouter' | 'primary
 
 export interface VoiceProvider {
   name: VoiceProviderName;
-  transcribe(audio: Buffer, language?: string): Promise<VoiceTranscriptionResult>;
+  transcribe(audio: Buffer, language?: string, mimeType?: string): Promise<VoiceTranscriptionResult>;
 }
 
 export interface ReasoningProvider {

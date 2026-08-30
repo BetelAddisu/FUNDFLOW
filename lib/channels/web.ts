@@ -19,6 +19,7 @@ export async function handleWebRequest(
     messageType: 'mixed',
     text: text || undefined,
     audio: audioFile ? Buffer.from(await audioFile.arrayBuffer()) : undefined,
+    audioMimeType: audioFile?.type || undefined,
     photos: photoFiles.length
       ? await Promise.all(photoFiles.map((f) => f.arrayBuffer().then((buf) => Buffer.from(buf))))
       : undefined,

@@ -3,14 +3,15 @@ import { VoiceProvider, VoiceTranscriptionResult, VoiceProviderName } from '../t
 export class WhisperVoiceProvider implements VoiceProvider {
   name: VoiceProviderName = 'whisper';
 
-  async transcribe(audio: Buffer, language?: string): Promise<VoiceTranscriptionResult> {
+  async transcribe(audio: Buffer, language?: string, mimeType?: string): Promise<VoiceTranscriptionResult> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
 
+    const ext = mimeType?.split('/')[1]?.split(';')[0] || 'webm';
     const formData = new FormData();
-    formData.append('file', new Blob([new Uint8Array(audio)], { type: 'audio/wav' }), 'audio.wav');
+    formData.append('file', new Blob([new Uint8Array(audio)], { type: mimeType || 'audio/webm' }), `audio.${ext}`);
     formData.append('model', 'whisper-1');
-    if (language) formData.append('language', language);
+    if (language && language !== 'om') formData.append('language', language);
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',

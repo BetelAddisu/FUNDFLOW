@@ -4,6 +4,7 @@ export interface ChannelInput {
   messageType: 'text' | 'voice' | 'photo' | 'mixed';
   text?: string;
   audio?: Buffer;
+  audioMimeType?: string;
   photos?: Buffer[];
   metadata: {
     channel: 'web' | 'telegram';
