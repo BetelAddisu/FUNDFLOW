@@ -182,16 +182,23 @@ export class InterviewSessionService {
       session.language = requestedLanguage;
     }
 
-    const lang = session.language;
-
-    // ── Handle language switch command ────────────────────────────────────────
+    // ── Handle language switch command ──────────────────────────────────────────
     if (input.text?.startsWith('/lang ')) {
       const newLang = input.text.slice(6).trim() as Language;
       if (['en', 'am', 'om'].includes(newLang)) {
         session.language = newLang;
-        return { text: WELCOME[newLang], evidence: session.flatEvidence, gaps: session.gaps, contradictions: session.contradictions, progress: 0 };
+        // If there's ONLY a lang switch with no audio/photos, return welcome
+        // If audio or photos are also attached, fall through to process them in the new language
+        if (!input.audio && !input.photos?.length) {
+          return { text: WELCOME[newLang], evidence: session.flatEvidence, gaps: session.gaps, contradictions: session.contradictions, progress: 0 };
+        }
+        // Strip the /lang command so it doesn't pollute transcription context
+        input = { ...input, text: undefined };
       }
     }
+
+    // Re-read lang AFTER any language switch above
+    const lang = session.language;
 
     // ── First message: welcome (text/language probe only) ────────────────────
     if (session.messages.length === 0 && !input.text && !input.audio && !input.photos?.length) {
@@ -204,6 +211,7 @@ export class InterviewSessionService {
     let userText = input.text ?? '';
     let inputType: 'text' | 'voice' | 'photo' = input.text ? 'text' : 'photo';
     let transcriptionProvider: string | undefined;
+    let transcribedText: string | undefined; // Track transcription so frontend can display it
 
     if (input.audio) {
       inputType = 'voice';
@@ -220,6 +228,7 @@ export class InterviewSessionService {
         };
       }
       userText = transcription.text;
+      transcribedText = transcription.text;
       transcriptionProvider = transcription.provider;
     }
 
@@ -458,7 +467,8 @@ Keep your response under 3 sentences.`;
   private buildResponse(
     session: SessionState,
     text: string,
-    coverageGaps?: CoverageGap[]
+    coverageGaps?: CoverageGap[],
+    transcribedText?: string
   ) {
     const gaps = (coverageGaps ?? getCoverageGaps(session.flatEvidence)).map((g) => ({
       field: g.field,
@@ -513,6 +523,7 @@ Keep your response under 3 sentences.`;
       progress: this.calcProgress(session.flatEvidence),
       sdgSuggestions,
       sessionId: session.sessionId,
+      transcribedText,    // Let the frontend show what Whisper heard
       metadata: { channel: session.channel, language: session.language },
     };
   }

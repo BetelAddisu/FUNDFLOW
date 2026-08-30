@@ -462,6 +462,8 @@ export default function ApplyPage() {
     if (curLicense) formData.append('photos', curLicense);
     if (curWorkshop) formData.append('photos', curWorkshop);
 
+    let currentMsgId: string | undefined;
+
     if (!isInitial) {
       let attachmentName: string | undefined;
       let msgType: 'text' | 'voice' | 'photo' = 'text';
@@ -475,6 +477,7 @@ export default function ApplyPage() {
       }
 
       const msgId = `msg_${Math.random().toString(36).substring(2, 9)}`;
+      currentMsgId = msgId;
       const userContent = text || (curAudio ? `[Audio File Sent: ${curAudio.name}]` : '[Photo Uploaded]');
 
       setMessages((prev) => [
@@ -536,6 +539,12 @@ export default function ApplyPage() {
       if (data.error) {
         setError(data.error);
         return;
+      }
+
+      if (data.transcribedText && currentMsgId) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === currentMsgId ? { ...m, content: `🗣️ "${data.transcribedText}"` } : m))
+        );
       }
 
       if (data.text) {
