@@ -7,7 +7,7 @@ export class PrimaryReasoningProvider implements ReasoningProvider {
     const apiKey = process.env.REASONING_PRIMARY_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('REASONING_PRIMARY_API_KEY is not set');
 
-    const response = await fetch(
+    let response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -17,6 +17,20 @@ export class PrimaryReasoningProvider implements ReasoningProvider {
         }),
       }
     );
+
+    if (!response.ok && response.status === 429) {
+      // Fallback to gemini-1.5-flash on rate limit
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        }
+      );
+    }
 
     if (!response.ok) {
       throw new Error(`Primary reasoning failed: ${response.status}`);
