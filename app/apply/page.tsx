@@ -862,15 +862,12 @@ export default function ApplyPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-200 text-xs">Business Legal Name & Location</label>
-                    {flatEvidence['company_profile.company_name'] || flatEvidence['business.name'] ? (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        ✔ Auto-Filled
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        ⏳ Needed
-                      </span>
-                    )}
+                    {(() => {
+                      const e = flatEvidence['company_profile.company_name'] || flatEvidence['business.name'];
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                    })()}
                   </div>
                   <p className="text-[11px] text-slate-400">Official trade name, sector, and registered location.</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[42px] text-slate-200 leading-relaxed font-mono">
@@ -887,15 +884,12 @@ export default function ApplyPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-200 text-xs">What problem do you need help with?</label>
-                    {flatEvidence['business.problem_addressed'] || flatEvidence['project.problem'] ? (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        ✔ Auto-Filled
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        ⏳ Needed
-                      </span>
-                    )}
+                    {(() => {
+                      const e = flatEvidence['business.problem_addressed'] || flatEvidence['project.problem'] || flatEvidence['intervention_requested.problem_to_be_addressed'];
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                    })()}
                   </div>
                   <p className="text-[11px] text-slate-400">The need in your community or business that this project addresses.</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
@@ -912,15 +906,12 @@ export default function ApplyPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-200 text-xs">What will the money be used for?</label>
-                    {flatEvidence['financials.use_of_funds'] || flatEvidence['funding.purpose'] ? (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        ✔ Auto-Filled
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        ⏳ Needed
-                      </span>
-                    )}
+                    {(() => {
+                      const e = flatEvidence['financials.use_of_funds'] || flatEvidence['funding.purpose'] || flatEvidence['intervention_requested.expected_results'];
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                    })()}
                   </div>
                   <p className="text-[11px] text-slate-400">What you will buy, build, run or pay for (equipment, inventory, payroll).</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
@@ -937,15 +928,12 @@ export default function ApplyPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-200 text-xs">Project description & impact</label>
-                    {flatEvidence['business.description'] || flatEvidence['company_profile.business_type'] ? (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        ✔ Auto-Filled
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        ⏳ Needed
-                      </span>
-                    )}
+                    {(() => {
+                      const e = flatEvidence['business.description'] || flatEvidence['company_profile.business_type'] || flatEvidence['company_overview.development_since_start'];
+                      if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">⏳ Needed</span>;
+                      if (e.state === 'inferred') return <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">◈ Assumed</span>;
+                      return <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">✔ Confirmed</span>;
+                    })()}
                   </div>
                   <p className="text-[11px] text-slate-400">What the project does and the impact it will have on beneficiaries.</p>
                   <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">

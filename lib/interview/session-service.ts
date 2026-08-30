@@ -111,7 +111,15 @@ function getCoverageGaps(flatEvidence: FlatEvidence): CoverageGap[] {
   for (const field of coverageMap) {
     if (!field.required) continue;
     const item = flatEvidence[field.id];
-    if (!item || item.value === undefined || item.value === null || item.value === '') {
+    const isFilled =
+      item &&
+      item.value !== undefined &&
+      item.value !== null &&
+      item.value !== '' &&
+      // Treat inferred/hypothesized fields as filled if confidence is meaningful (>= 0.40)
+      // This prevents the AI from asking about things it has already reasonably assumed
+      item.confidence >= 0.4;
+    if (!isFilled) {
       gaps.push({
         field: field.id,
         message: `Missing: ${field.id.split('.').pop()?.replace(/_/g, ' ')}`,
@@ -236,25 +244,27 @@ export class InterviewSessionService {
       };
 
       // Try Gemini vision description for the photo
+      let visionText: string | null = null;
       if (input.photos[0]) {
         try {
-          const visionText = await this.describePhotoWithGemini(input.photos[0], photoFieldKey, lang);
+          visionText = await this.describePhotoWithGemini(input.photos[0], photoFieldKey, lang);
           if (visionText) {
             session.flatEvidence[photoFieldKey].notes = visionText;
-            session.flatEvidence[photoFieldKey].confidence = 0.65;
+            session.flatEvidence[photoFieldKey].confidence = 0.85;
+            // Append vision text so LLM evidence extraction can pull company name, TIN, registration #, location, etc.
+            userText = userText
+              ? `${userText}\n[Photo document text: ${visionText}]`
+              : `[Photo document text: ${visionText}]`;
           }
         } catch {
           // Vision analysis failed — photo still recorded as received
         }
       }
 
-      if (!userText) {
-        // Photo only — acknowledge and ask next question
-        const photoAck = this.getPhotoAcknowledgment(photoFieldKey, lang);
-        const nextQ = await this.generateNextQuestion(session);
-        const reply = `${photoAck} ${nextQ}`;
-        session.messages.push({ role: 'assistant', content: reply, timestamp: Date.now() });
-        return this.buildResponse(session, reply);
+      if (!input.text) {
+        // Photo only (no manual text message typed)
+        const photoAck = this.getPhotoAcknowledgment(photoFieldKey, lang, visionText);
+        // If vision details were extracted, still run Step 4 (LLM extraction) below before generating next question
       }
     }
 
@@ -358,17 +368,35 @@ export class InterviewSessionService {
     return AI_ERROR[lang];
   }
 
+  private detectImageMimeType(buffer: Buffer): string {
+    if (buffer.length >= 4) {
+      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+        return 'image/png';
+      }
+      if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+        return 'image/jpeg';
+      }
+      if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
+        return 'image/webp';
+      }
+      if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+        return 'image/gif';
+      }
+    }
+    return 'image/jpeg';
+  }
+
   private async describePhotoWithGemini(photoBuffer: Buffer, context: string, lang: Language): Promise<string | null> {
     const apiKey = process.env.GEMINI_API_KEY || process.env.REASONING_PRIMARY_API_KEY;
     if (!apiKey) return null;
 
+    const mimeType = this.detectImageMimeType(photoBuffer);
     const photoBase64 = photoBuffer.toString('base64');
     const contextHint = context.includes('license') ? 'business licence or trade permit' : 'business workshop or premises';
-    const prompt = `This photo appears to be a ${contextHint} for a business funding application. 
-Describe only what is VISUALLY OBSERVABLE in this image. 
-Do NOT infer ownership, revenue, registration validity, or employee count from the image.
-State: "Document/premises visible: [brief factual description]" in ${lang === 'en' ? 'English' : lang === 'am' ? 'Amharic' : 'Afaan Oromo'}.
-Keep your response under 2 sentences.`;
+    const prompt = `This photo appears to be a ${contextHint} for a business funding application in Ethiopia. 
+Extract and transcribe any VISUALLY OBSERVABLE facts from this document or photo (such as trade name, registration/TIN number, dates, address, business activity, or physical premises features).
+State: "Document/premises details visible: [factual summary of text/items seen]" in ${lang === 'en' ? 'English' : lang === 'am' ? 'Amharic' : 'Afaan Oromo'}.
+Keep your response under 3 sentences.`;
 
     try {
       const response = await fetch(
@@ -380,7 +408,7 @@ Keep your response under 2 sentences.`;
             contents: [{
               parts: [
                 { text: prompt },
-                { inline_data: { mime_type: 'image/jpeg', data: photoBase64 } },
+                { inline_data: { mime_type: mimeType, data: photoBase64 } },
               ],
             }],
           }),
@@ -394,12 +422,13 @@ Keep your response under 2 sentences.`;
     }
   }
 
-  private getPhotoAcknowledgment(field: string, lang: Language): string {
+  private getPhotoAcknowledgment(field: string, lang: Language, visionText?: string | null): string {
     const isLicense = field.includes('license');
+    const note = visionText ? ` (${visionText})` : '';
     const acks: Record<Language, string> = {
-      en: isLicense ? 'Business licence photo received. ✓' : 'Workshop photo received. ✓',
-      am: isLicense ? 'የንግድ ፈቃድ ፎቶ ደርሷል። ✓' : 'የሥራ ቦታ ፎቶ ደርሷል። ✓',
-      om: isLicense ? 'Suuraan hayyama daldala bittaa taateera. ✓' : 'Suuraan mana hojii bittaa taateera. ✓',
+      en: isLicense ? `Business licence photo received. ✓${note}` : `Workshop photo received. ✓${note}`,
+      am: isLicense ? `የንግድ ፈቃድ ፎቶ ደርሷል። ✓${note}` : `የሥራ ቦታ ፎቶ ደርሷል። ✓${note}`,
+      om: isLicense ? `Suuraan hayyama daldala bittaa taateera. ✓${note}` : `Suuraan mana hojii bittaa taateera. ✓${note}`,
     };
     return acks[lang];
   }

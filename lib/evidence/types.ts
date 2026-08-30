@@ -1,5 +1,6 @@
 export type EvidenceState =
   | 'self_reported'
+  | 'inferred'
   | 'document_supported'
   | 'visually_observed'
   | 'verified'
