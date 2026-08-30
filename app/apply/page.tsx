@@ -798,7 +798,7 @@ export default function ApplyPage() {
             )}
 
             {/* Submission Success Banner */}
-            {(flatEvidence['documents.business_license_uploaded']?.value || status === 'complete' || progress >= 90) && (
+            {(flatEvidence['documents.business_license_uploaded']?.value || progress >= 90) && (
               <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/90 via-teal-900/90 to-slate-900 border border-emerald-500/50 shadow-xl shadow-emerald-500/10 text-white space-y-2.5 animate-in fade-in slide-in-from-top-3 duration-500">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
