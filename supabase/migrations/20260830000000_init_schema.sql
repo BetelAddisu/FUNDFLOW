@@ -1,6 +1,6 @@
--- Supabase Schema for FUNDFLOW Applications, Messages, and Applicant Authentication
+-- Supabase Migration: 20260830000000_init_schema.sql
+-- Fixes: relation "supabase_migrations.schema_migrations" does not exist
 
--- 0. Migration Tracking Schema (Fixes: relation "supabase_migrations.schema_migrations" does not exist)
 CREATE SCHEMA IF NOT EXISTS supabase_migrations;
 
 CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS application_messages (
 CREATE INDEX IF NOT EXISTS idx_applications_user_id ON applications(user_id);
 CREATE INDEX IF NOT EXISTS idx_application_messages_session_id ON application_messages(session_id);
 
--- Enable RLS Policies (Allow public anon access for hackathon simplicity)
+-- Enable RLS Policies
 ALTER TABLE applicant_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE application_messages ENABLE ROW LEVEL SECURITY;
