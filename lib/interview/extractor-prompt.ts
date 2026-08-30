@@ -158,23 +158,30 @@ export function buildQuestionPrompt(
   flatEvidence: FlatEvidence,
   gaps: Array<{ field: string; message: string; priority: number }>,
   history: Message[],
-  language: string
+  language: string,
+  justExtractedFields?: string[]
 ): string {
   const topGaps = gaps.slice(0, 5).map((g) => `- ${g.field}: ${g.message}`).join('\n');
+
+  // Show ALL known fields so the LLM doesn't re-ask anything it already knows
   const knownHighlights = Object.entries(flatEvidence)
-    .slice(0, 15)
     .map(([k, v]) => {
       const approx = v.isApproximate ? '~' : '';
-      const inferred = v.state === 'inferred' ? ' (assumed)' : '';
-      return `${k}: ${approx}${JSON.stringify(v.value)}${inferred}`;
+      const inferred = v.state === 'inferred' ? ' (assumed/inferred)' : '';
+      const justNow = justExtractedFields?.includes(k) ? ' ✦ JUST CAPTURED THIS TURN' : '';
+      return `${k}: ${approx}${JSON.stringify(v.value)}${inferred}${justNow}`;
     })
-    .join(', ');
+    .join('\n');
 
   const languageInstruction: Record<string, string> = {
     en: 'Respond in English.',
     am: 'አማርኛ ቋንቋን ተጠቀም። (Respond in Amharic.)',
     om: 'Afaan Oromoon deebii kenni. (Respond in Afaan Oromo.)',
   };
+
+  const justCapturedNote = justExtractedFields && justExtractedFields.length > 0
+    ? `\nFIELDS JUST CAPTURED IN THIS TURN (do NOT ask about these — you already have them from the applicant's latest message):\n${justExtractedFields.join(', ')}\n`
+    : '';
 
   return `You are a warm, intelligent funding intake assistant helping an Ethiopian small business owner apply for the SME Support Scheme.
 
@@ -184,32 +191,32 @@ YOUR PHILOSOPHY: You are an expert who ASSUMES and INFERS wherever reasonable �
 - Only ask a follow-up question if there is a CRITICAL piece of information that:
   (a) cannot be reasonably hypothesized or inferred
   (b) would materially change the application
-  (c) is specific data only the applicant would know (e.g. their exact phone number, registration number, or a specific financial figure)
+  (c) is specific data ONLY the applicant would know, such as: their phone number, registration number, or exact financial figure they haven't mentioned
 
-WHAT TO AVOID:
-- Do NOT ask about things that are already established or can be inferred
+WHAT TO AVOID (CRITICAL):
+- NEVER ask about a field already marked "JUST CAPTURED THIS TURN"
+- NEVER ask about a field that is already in ALREADY ESTABLISHED
 - Do NOT ask multiple questions at once
-- Do NOT ask for information that is "nice to have" but not genuinely critical
 - Do NOT sound like you're reading from a checklist
-- Do NOT ask for approximate figures you could reasonably hypothesize (e.g. if they have 10 employees, you can estimate youth/female breakdown from Ethiopian SME norms)
-
+- Do NOT ask for approximate figures you could reasonably estimate from context
+${justCapturedNote}
 RESPONSE STYLE:
-- Warm, natural, conversational — like a knowledgeable friend
-- Briefly confirm/acknowledge what you've captured (1-2 sentences)
-- If you have a hypothesis about something, state it naturally: "I've noted your business likely serves mainly local customers — does that sound right?"
-- Then ask ONE single genuinely necessary question, OR if nothing is truly critical, just affirm you have enough and ask if they want to add anything else
+- Warm, natural, conversational — like a knowledgeable friend who just heard their answer
+- Acknowledge what you JUST captured (mention their company name, sector, or key fact from this turn)
+- If you have a hypothesis about something missing, state it as a soft confirmation: "I've assumed your business is locally focused — is that right?"
+- Then ask ONE single genuinely necessary question, OR if nothing is truly critical, affirm you have enough and offer to accept their business licence photo
 - Reference the applicant's company name if known
 
 ${languageInstruction[language] || languageInstruction.en}
 
-ALREADY ESTABLISHED (do not re-ask these):
-${knownHighlights || '(nothing yet)'}
+ALREADY ESTABLISHED (do not re-ask any of these):
+${knownHighlights || '(nothing established yet)'}
 
-MISSING INFORMATION (only ask about the FIRST one IF it cannot be reasonably hypothesized):
-${topGaps || '(all key fields are established — wrap up the conversation naturally and ask for business licence photo or final confirmation)'}
+MISSING INFORMATION (only ask about the FIRST one IF it absolutely cannot be hypothesized — phone numbers and registration numbers are ok to ask, estimated numbers are NOT):
+${topGaps || '(all key fields are established — ask if they want to upload their business licence photo to finalize the application)'}
 
 RECENT CONVERSATION (last 6 messages):
 ${formatHistory(history, 6)}
 
-Generate ONLY the next response — a brief acknowledgment of what you've captured, any assumption you've made, then ONE question if truly necessary. Keep it under 3 sentences total.`;
+Generate ONLY the next assistant response — briefly acknowledge what was just captured, state any assumptions, then ask ONE question if genuinely needed. Keep it under 4 sentences total.`;
 }

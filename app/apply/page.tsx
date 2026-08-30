@@ -815,11 +815,67 @@ export default function ApplyPage() {
             ))}
 
             {loading && (
-              <div className="flex items-center gap-2 text-xs text-slate-400 p-2">
-                <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
-                Processing intake input...
+              <div className="flex items-start gap-3 p-2">
+                <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-[#172030] border border-slate-700/80 text-xs text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
+                    {audioFile
+                      ? (language === 'om' ? 'Sagalee dhaggeeffachaa...' : language === 'am' ? 'ድምጽ እየተቀበለ...' : 'Transcribing voice...')
+                      : licensePhoto || workshopPhoto
+                      ? (language === 'om' ? 'Suuraa qoraa...' : language === 'am' ? 'ፎቶ እያጠና...' : 'Analyzing photo...')
+                      : (language === 'om' ? 'Odeeffannoo baasaa...' : language === 'am' ? 'መረጃ እያወጣ...' : 'Extracting information...')}
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* Inline Document Upload Action Card — shown when AI has enough info and asks for docs */}
+            {!loading && progress >= 40 && !flatEvidence['documents.business_license_uploaded'] && (
+              <div className="flex items-start gap-2 mt-1">
+                <div className="bg-[#0b1628] border border-blue-500/30 rounded-lg p-3.5 text-xs space-y-3 w-full max-w-[85%]">
+                  <div className="flex items-center gap-2 text-blue-400 font-semibold">
+                    <span>📎</span>
+                    <span>
+                      {language === 'om'
+                        ? 'Galmee fi suuraa galchi'
+                        : language === 'am'
+                        ? 'ሰነዶች ያቅርቡ'
+                        : 'Upload Supporting Documents'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => licenseInputRef.current?.click()}
+                      className="flex flex-col items-center gap-1.5 p-2.5 rounded bg-[#172030] border border-amber-500/30 hover:border-amber-400/60 text-amber-400 font-medium transition-colors"
+                    >
+                      <span className="text-lg">📄</span>
+                      <span className="text-[10px] text-center leading-tight">
+                        {language === 'om' ? 'Hayyama Daldala' : language === 'am' ? 'የንግድ ፈቃድ' : 'Business Licence'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => workshopInputRef.current?.click()}
+                      className="flex flex-col items-center gap-1.5 p-2.5 rounded bg-[#172030] border border-slate-600/40 hover:border-slate-500/60 text-slate-400 font-medium transition-colors"
+                    >
+                      <span className="text-lg">🏭</span>
+                      <span className="text-[10px] text-center leading-tight">
+                        {language === 'om' ? 'Mana Hojii' : language === 'am' ? 'የሥራ ቦታ' : 'Workshop Photo'}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-slate-500 text-[10px] leading-relaxed">
+                    {language === 'om'
+                      ? 'Hayyama daldala keessanii suuraa kaasaa ergaa. Ibsaaf dirqama miti.'
+                      : language === 'am'
+                      ? 'ፎቶ ቢያቀርቡ ማመልከቻዎ ይጠናከራል። አስፈላጊ አይደለም ነገር ግን ይረዳል።'
+                      : 'Upload a photo of your trade licence to strengthen your application. Workshop photo optional.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 

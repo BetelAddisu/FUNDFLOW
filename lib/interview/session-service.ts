@@ -193,7 +193,7 @@ export class InterviewSessionService {
       }
     }
 
-    // ── First message: welcome ────────────────────────────────────────────────
+    // ── First message: welcome (text/language probe only) ────────────────────
     if (session.messages.length === 0 && !input.text && !input.audio && !input.photos?.length) {
       const welcome = WELCOME[lang];
       session.messages.push({ role: 'assistant', content: welcome, timestamp: Date.now() });
@@ -280,6 +280,10 @@ export class InterviewSessionService {
     }
 
     // ── Step 4: LLM evidence extraction ──────────────────────────────────────
+    // Track which fields are new THIS turn so the question generator doesn't re-ask them
+    const previousFieldKeys = new Set(Object.keys(session.flatEvidence));
+    const justExtractedFields: string[] = [];
+
     if (userText) {
       try {
         const extractionPrompt = buildExtractionPrompt(session.flatEvidence, session.messages, userText, lang);
@@ -303,6 +307,7 @@ export class InterviewSessionService {
                     timestamp: Date.now(),
                     originalText: userText,
                   };
+                  justExtractedFields.push(field);
                 }
               }
             }
@@ -330,14 +335,14 @@ export class InterviewSessionService {
     const coverageGaps = getCoverageGaps(session.flatEvidence);
 
     // ── Step 7: Generate adaptive next question ───────────────────────────────
-    const assistantText = await this.generateNextQuestion(session, coverageGaps);
+    const assistantText = await this.generateNextQuestion(session, coverageGaps, justExtractedFields);
     session.messages.push({ role: 'assistant', content: assistantText, timestamp: Date.now() });
     session.updatedAt = Date.now();
 
     return this.buildResponse(session, assistantText, coverageGaps);
   }
 
-  private async generateNextQuestion(session: SessionState, gaps?: CoverageGap[]): Promise<string> {
+  private async generateNextQuestion(session: SessionState, gaps?: CoverageGap[], justExtractedFields?: string[]): Promise<string> {
     const lang = session.language;
     const gapsToUse = gaps ?? getCoverageGaps(session.flatEvidence);
 
@@ -349,7 +354,7 @@ export class InterviewSessionService {
 
     // Try LLM-generated adaptive question
     try {
-      const questionPrompt = buildQuestionPrompt(session.flatEvidence, gapsToUse, session.messages, lang);
+      const questionPrompt = buildQuestionPrompt(session.flatEvidence, gapsToUse, session.messages, lang, justExtractedFields);
       const result = await completeWithFallback(questionPrompt);
       if (result.text && result.provider !== 'unresolved') {
         return result.text.trim();
@@ -358,9 +363,11 @@ export class InterviewSessionService {
       console.warn('[session-service] Question generation failed, falling back to template:', err);
     }
 
-    // Fallback: use coverage map template question
-    const topGapField = gapsToUse[0]?.field;
-    const fieldDef = coverageMap.find((f) => f.id === topGapField);
+    // Fallback: use coverage map template question for the FIRST gap not just captured
+    const firstUncapturedGap = gapsToUse.find(
+      (g) => !justExtractedFields?.includes(g.field)
+    ) ?? gapsToUse[0];
+    const fieldDef = coverageMap.find((f) => f.id === firstUncapturedGap?.field);
     if (fieldDef) {
       return fieldDef.question[lang] ?? fieldDef.question.en;
     }

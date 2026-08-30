@@ -49,6 +49,29 @@ export default function ReviewPage() {
   const [selectedApp, setSelectedApp] = useState<ReviewEntry | null>(null);
   const [slotsAvailable, setSlotsAvailable] = useState<number>(2);
 
+  // Reviewer Determination Persistence State
+  const [reviewerDecisions, setReviewerDecisions] = useState<
+    Record<string, { status: 'approved' | 'site_visit' | 'rejected'; note: string }>
+  >({});
+
+  useEffect(() => {
+    const saved = localStorage.getItem('fundflow_reviewer_decisions');
+    if (saved) {
+      try {
+        setReviewerDecisions(JSON.parse(saved));
+      } catch {}
+    }
+  }, []);
+
+  const saveDecision = (appId: string, status: 'approved' | 'site_visit' | 'rejected', note: string) => {
+    const updated = {
+      ...reviewerDecisions,
+      [appId]: { status, note },
+    };
+    setReviewerDecisions(updated);
+    localStorage.setItem('fundflow_reviewer_decisions', JSON.stringify(updated));
+  };
+
   useEffect(() => {
     fetchReviewData(slotsAvailable);
   }, [slotsAvailable]);
@@ -444,13 +467,60 @@ export default function ReviewPage() {
               </div>
             </div>
 
-            <div className="p-3 border-t border-slate-800 bg-[#0b0f17] flex justify-end">
-              <button
-                onClick={() => setSelectedApp(null)}
-                className="px-3.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
-              >
-                Close Inspection
-              </button>
+            {/* Reviewer Determination & Actions Bar */}
+            <div className="p-4 border-t border-slate-800 bg-[#0b0f17] flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs w-full sm:w-auto">
+                <span className="font-semibold text-slate-300">Determination:</span>
+                <span
+                  className={`px-2.5 py-1 rounded text-[11px] font-bold uppercase ${
+                    reviewerDecisions[selectedApp.id]?.status === 'approved'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : reviewerDecisions[selectedApp.id]?.status === 'site_visit'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      : reviewerDecisions[selectedApp.id]?.status === 'rejected'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}
+                >
+                  {reviewerDecisions[selectedApp.id]?.status === 'approved'
+                    ? '⭐ Approved for Shortlist'
+                    : reviewerDecisions[selectedApp.id]?.status === 'site_visit'
+                    ? '📋 Site Visit Flagged'
+                    : reviewerDecisions[selectedApp.id]?.status === 'rejected'
+                    ? '🚫 Manually Excluded'
+                    : 'Pending Determination'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => saveDecision(selectedApp.id, 'approved', 'Reviewer approved for award shortlist.')}
+                  className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-md shadow-emerald-600/20"
+                >
+                  ⭐ Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveDecision(selectedApp.id, 'site_visit', 'Flagged for physical premises & TIN verification.')}
+                  className="px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-md shadow-amber-600/20"
+                >
+                  📋 Site Visit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveDecision(selectedApp.id, 'rejected', 'Reviewer rejected eligibility criteria.')}
+                  className="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-md shadow-rose-600/20"
+                >
+                  🚫 Reject
+                </button>
+                <button
+                  onClick={() => setSelectedApp(null)}
+                  className="px-3.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition-colors"
+                >
+                  Close Inspection
+                </button>
+              </div>
             </div>
           </div>
         </div>
