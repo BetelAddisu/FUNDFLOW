@@ -192,6 +192,10 @@ export default function ApplyPage() {
   const [sdgSuggestions, setSdgSuggestions] = useState<any[]>([]);
   const [progress, setProgress] = useState<number>(0);
   
+  // Real-time Extraction Feedback State
+  const [recentlyExtractedKeys, setRecentlyExtractedKeys] = useState<Set<string>>(new Set());
+  const [liveExtractionToast, setLiveExtractionToast] = useState<{ text: string; count: number } | null>(null);
+  
   // UI states
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -519,7 +523,9 @@ export default function ApplyPage() {
       try {
         data = JSON.parse(rawText);
       } catch {
-        if (res.status === 413 || rawText.toLowerCase().includes('request entity') || rawText.toLowerCase().includes('large')) {
+        if (res.status === 504 || rawText.toLowerCase().includes('function_invocation_timeout')) {
+          setError('Server timeout (504). Your photo was received and saved — tap Send again to finish auto-filling.');
+        } else if (res.status === 413 || rawText.toLowerCase().includes('request entity') || rawText.toLowerCase().includes('large')) {
           setError('File size too large for a single upload. Please send your audio recording and photo separately.');
         } else {
           setError(`Server response error (${res.status}): ${rawText.slice(0, 120)}`);
@@ -555,7 +561,33 @@ export default function ApplyPage() {
         }).catch(() => {});
       }
 
-      if (data.evidence) setFlatEvidence(data.evidence);
+      if (data.evidence) {
+        const newKeys = new Set<string>();
+        for (const [k, v] of Object.entries(data.evidence)) {
+          const oldVal = flatEvidence[k]?.value;
+          const newVal = (v as any)?.value;
+          if (newVal !== undefined && newVal !== null && newVal !== oldVal) {
+            newKeys.add(k);
+          }
+        }
+
+        setFlatEvidence(data.evidence);
+
+        if (newKeys.size > 0) {
+          setRecentlyExtractedKeys(newKeys);
+          const toastText = lang === 'am'
+            ? `✨ ${newKeys.size} መስኮች በራስ-ሰር ተሞልተዋል!`
+            : lang === 'om'
+            ? `✨ Dirreewwan ${newKeys.size} ofiin guutaman!`
+            : `✨ ${newKeys.size} field${newKeys.size > 1 ? 's' : ''} auto-filled in real time!`;
+          setLiveExtractionToast({ text: toastText, count: newKeys.size });
+
+          setTimeout(() => {
+            setRecentlyExtractedKeys(new Set());
+            setLiveExtractionToast(null);
+          }, 6000);
+        }
+      }
       if (data.gaps) setGaps(data.gaps);
       if (data.contradictions) setContradictions(data.contradictions);
       if (data.sdgSuggestions) setSdgSuggestions(data.sdgSuggestions);
@@ -1095,12 +1127,25 @@ export default function ApplyPage() {
             
             {/* TAB 1: LIVE APPLICATION FORM VIEW */}
             {rightConsoleTab === 'form' && (
-              <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs relative">
                 
+                {/* Real-Time Extraction Toast Alert */}
+                {liveExtractionToast && (
+                  <div className="bg-emerald-600/90 text-white text-xs font-bold px-3.5 py-2.5 rounded-lg shadow-xl border border-emerald-400/40 flex items-center justify-between animate-bounce">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                      <span>{liveExtractionToast.text}</span>
+                    </div>
+                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider font-mono">Real-time Auto Fill</span>
+                  </div>
+                )}
+
                 {/* Form Field 1: Business Name & Legal Entity */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-200 text-xs">{FORM_UI_I18N[language].field1Label}</label>
+                    <label className="font-semibold text-slate-200 text-xs flex items-center gap-1.5">
+                      {FORM_UI_I18N[language].field1Label}
+                    </label>
                     {(() => {
                       const e = flatEvidence['company_profile.company_name'] || flatEvidence['business.name'];
                       if (!e) return <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{FORM_UI_I18N[language].badgeNeeded}</span>;
@@ -1109,7 +1154,19 @@ export default function ApplyPage() {
                     })()}
                   </div>
                   <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field1Sub}</p>
-                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[42px] text-slate-200 leading-relaxed font-mono">
+                  <div
+                    className={`p-3 rounded bg-[#172030] leading-relaxed font-mono min-h-[42px] transition-all duration-500 ${
+                      recentlyExtractedKeys.has('company_profile.company_name') || recentlyExtractedKeys.has('business.name')
+                        ? 'border-2 border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
+                        : 'border border-slate-700 text-slate-200'
+                    }`}
+                  >
+                    {(recentlyExtractedKeys.has('company_profile.company_name') || recentlyExtractedKeys.has('business.name')) && (
+                      <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span>✨ AUTO-FILLED IN REAL TIME</span>
+                      </div>
+                    )}
                     {flatEvidence['company_profile.company_name']?.value ||
                       flatEvidence['business.name']?.value || (
                         <span className="text-slate-500 italic font-sans text-xs">
@@ -1131,9 +1188,26 @@ export default function ApplyPage() {
                     })()}
                   </div>
                   <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field2Sub}</p>
-                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
+                  <div
+                    className={`p-3 rounded bg-[#172030] leading-relaxed min-h-[64px] transition-all duration-500 ${
+                      recentlyExtractedKeys.has('business.problem_addressed') ||
+                      recentlyExtractedKeys.has('project.problem') ||
+                      recentlyExtractedKeys.has('intervention_requested.problem_to_be_addressed')
+                        ? 'border-2 border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
+                        : 'border border-slate-700 text-slate-200'
+                    }`}
+                  >
+                    {(recentlyExtractedKeys.has('business.problem_addressed') ||
+                      recentlyExtractedKeys.has('project.problem') ||
+                      recentlyExtractedKeys.has('intervention_requested.problem_to_be_addressed')) && (
+                      <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span>✨ AUTO-FILLED IN REAL TIME</span>
+                      </div>
+                    )}
                     {flatEvidence['business.problem_addressed']?.value ||
-                      flatEvidence['project.problem']?.value || (
+                      flatEvidence['project.problem']?.value ||
+                      flatEvidence['intervention_requested.problem_to_be_addressed']?.value || (
                         <span className="text-slate-500 italic text-xs">
                           {FORM_UI_I18N[language].field2Placeholder}
                         </span>
@@ -1153,9 +1227,26 @@ export default function ApplyPage() {
                     })()}
                   </div>
                   <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field3Sub}</p>
-                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
+                  <div
+                    className={`p-3 rounded bg-[#172030] leading-relaxed min-h-[64px] transition-all duration-500 ${
+                      recentlyExtractedKeys.has('financials.use_of_funds') ||
+                      recentlyExtractedKeys.has('funding.purpose') ||
+                      recentlyExtractedKeys.has('intervention_requested.expected_results')
+                        ? 'border-2 border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
+                        : 'border border-slate-700 text-slate-200'
+                    }`}
+                  >
+                    {(recentlyExtractedKeys.has('financials.use_of_funds') ||
+                      recentlyExtractedKeys.has('funding.purpose') ||
+                      recentlyExtractedKeys.has('intervention_requested.expected_results')) && (
+                      <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span>✨ AUTO-FILLED IN REAL TIME</span>
+                      </div>
+                    )}
                     {flatEvidence['financials.use_of_funds']?.value ||
-                      flatEvidence['funding.purpose']?.value || (
+                      flatEvidence['funding.purpose']?.value ||
+                      flatEvidence['intervention_requested.expected_results']?.value || (
                         <span className="text-slate-500 italic text-xs">
                           {FORM_UI_I18N[language].field3Placeholder}
                         </span>
@@ -1175,9 +1266,26 @@ export default function ApplyPage() {
                     })()}
                   </div>
                   <p className="text-[11px] text-slate-400">{FORM_UI_I18N[language].field4Sub}</p>
-                  <div className="p-3 rounded bg-[#172030] border border-slate-700 min-h-[64px] text-slate-200 leading-relaxed">
+                  <div
+                    className={`p-3 rounded bg-[#172030] leading-relaxed min-h-[64px] transition-all duration-500 ${
+                      recentlyExtractedKeys.has('business.description') ||
+                      recentlyExtractedKeys.has('company_profile.business_type') ||
+                      recentlyExtractedKeys.has('company_overview.development_since_start')
+                        ? 'border-2 border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/30'
+                        : 'border border-slate-700 text-slate-200'
+                    }`}
+                  >
+                    {(recentlyExtractedKeys.has('business.description') ||
+                      recentlyExtractedKeys.has('company_profile.business_type') ||
+                      recentlyExtractedKeys.has('company_overview.development_since_start')) && (
+                      <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span>✨ AUTO-FILLED IN REAL TIME</span>
+                      </div>
+                    )}
                     {flatEvidence['business.description']?.value ||
-                      flatEvidence['company_profile.business_type']?.value || (
+                      flatEvidence['company_profile.business_type']?.value ||
+                      flatEvidence['company_overview.development_since_start']?.value || (
                         <span className="text-slate-500 italic text-xs">
                           {FORM_UI_I18N[language].field4Placeholder}
                         </span>
@@ -1189,7 +1297,13 @@ export default function ApplyPage() {
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 text-[11px]">{FORM_UI_I18N[language].field5Label}</label>
-                    <div className="p-2.5 rounded bg-[#172030] border border-slate-700 text-slate-200 font-mono text-xs">
+                    <div
+                      className={`p-2.5 rounded bg-[#172030] font-mono text-xs transition-all duration-500 ${
+                        recentlyExtractedKeys.has('financials.requested_amount') || recentlyExtractedKeys.has('financials.funding_requested')
+                          ? 'border-2 border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/20'
+                          : 'border border-slate-700 text-slate-200'
+                      }`}
+                    >
                       {flatEvidence['financials.requested_amount']?.value ||
                         flatEvidence['financials.funding_requested']?.value ||
                         FORM_UI_I18N[language].field5NotSet}
@@ -1197,7 +1311,13 @@ export default function ApplyPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 text-[11px]">{FORM_UI_I18N[language].field6Label}</label>
-                    <div className="p-2.5 rounded bg-[#172030] border border-slate-700 text-slate-200 font-mono text-xs truncate">
+                    <div
+                      className={`p-2.5 rounded bg-[#172030] font-mono text-xs truncate transition-all duration-500 ${
+                        recentlyExtractedKeys.has('company_profile.business_registration_number') || recentlyExtractedKeys.has('documents.business_license_uploaded')
+                          ? 'border-2 border-emerald-400 bg-emerald-500/10 shadow-lg shadow-emerald-500/20'
+                          : 'border border-slate-700 text-slate-200'
+                      }`}
+                    >
                       {flatEvidence['company_profile.business_registration_number']?.value ||
                         (licensePhoto ? FORM_UI_I18N[language].field6PhotoAttached : FORM_UI_I18N[language].field6Awaiting)}
                     </div>

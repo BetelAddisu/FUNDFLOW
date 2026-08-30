@@ -15,11 +15,20 @@ export function setReasoningProviders(providers: ReasoningProvider[]) {
   reasoningProviders = providers;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, providerName: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout of ${ms}ms exceeded for ${providerName}`)), ms)
+    ),
+  ]);
+}
+
 export async function completeWithFallback(prompt: string): Promise<ReasoningResult> {
   const start = Date.now();
   for (const provider of reasoningProviders) {
     try {
-      const result = await provider.complete(prompt);
+      const result = await withTimeout(provider.complete(prompt), 5000, provider.name);
       result.latencyMs = Date.now() - start;
       result.provider = provider.name;
       return result;

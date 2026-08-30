@@ -398,12 +398,16 @@ Extract and transcribe any VISUALLY OBSERVABLE facts from this document or photo
 State: "Document/premises details visible: [factual summary of text/items seen]" in ${lang === 'en' ? 'English' : lang === 'am' ? 'Amharic' : 'Afaan Oromo'}.
 Keep your response under 3 sentences.`;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             contents: [{
               parts: [
@@ -414,10 +418,12 @@ Keep your response under 3 sentences.`;
           }),
         }
       );
+      clearTimeout(timeoutId);
       if (!response.ok) return null;
       const data = await response.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
     } catch {
+      clearTimeout(timeoutId);
       return null;
     }
   }
