@@ -105,7 +105,7 @@ export const coverageMap: FieldDefinition[] = [
   // ── Section 1.2: Growth Indicators ────────────────────────────────────────
   {
     id: 'growth_indicators',
-    required: true,
+    required: false,
     priority: 8,
     section: '1.2',
     inputType: 'table',

@@ -422,6 +422,35 @@ export class InterviewSessionService {
         }
       }
 
+      // Direct table/sales fallback: extract numbers for 2022, 2023, 2024 if present in applicant message
+      if (userText.includes('2022') || userText.includes('2023') || userText.includes('2024')) {
+        const matches2022 = userText.match(/2022[^\d\n]*([\d,]+)/i);
+        const matches2023 = userText.match(/2023[^\d\n]*([\d,]+)/i);
+        const matches2024 = userText.match(/2024[^\d\n]*([\d,]+)/i);
+
+        if (matches2022) {
+          const num = parseInt(matches2022[1].replace(/,/g, ''), 10);
+          if (!isNaN(num) && num > 0) {
+            session.flatEvidence['growth_indicators.sales_etb.2022'] = { value: num, state: 'self_reported', confidence: 0.95, timestamp: Date.now(), originalText: userText };
+            justExtractedFields.push('growth_indicators.sales_etb.2022');
+          }
+        }
+        if (matches2023) {
+          const num = parseInt(matches2023[1].replace(/,/g, ''), 10);
+          if (!isNaN(num) && num > 0) {
+            session.flatEvidence['growth_indicators.sales_etb.2023'] = { value: num, state: 'self_reported', confidence: 0.95, timestamp: Date.now(), originalText: userText };
+            justExtractedFields.push('growth_indicators.sales_etb.2023');
+          }
+        }
+        if (matches2024) {
+          const num = parseInt(matches2024[1].replace(/,/g, ''), 10);
+          if (!isNaN(num) && num > 0) {
+            session.flatEvidence['growth_indicators.sales_etb.2024'] = { value: num, state: 'self_reported', confidence: 0.95, timestamp: Date.now(), originalText: userText };
+            justExtractedFields.push('growth_indicators.sales_etb.2024');
+          }
+        }
+      }
+
       // Auto-hypothesize remaining un-established required fields so form completes and proceeds to document upload
       autoHypothesizeMissingFields(session.flatEvidence);
     }
