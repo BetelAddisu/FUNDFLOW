@@ -7,11 +7,14 @@ export class GoogleVoiceProvider implements VoiceProvider {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
+    // Strip parameters like ;codecs=opus from mimeType for Gemini REST API compatibility
+    const cleanMimeType = (mimeType || 'audio/webm').split(';')[0].trim();
+
     // Convert audio to base64
     const audioBase64 = audio.toString('base64');
-    const prompt = language
+    const prompt = language && language !== 'en'
       ? `Transcribe the following audio in ${language}. Return only the transcription text.`
-      : 'Transcribe the following audio. Return only the transcription text.';
+      : 'Transcribe the following spoken audio into clear English text. Return ONLY the verbatim transcription text with no commentary.';
 
     const requestBody = {
       contents: [
@@ -20,7 +23,7 @@ export class GoogleVoiceProvider implements VoiceProvider {
             { text: prompt },
             {
               inline_data: {
-                mime_type: mimeType || 'audio/webm',
+                mime_type: cleanMimeType,
                 data: audioBase64,
               },
             },
@@ -29,29 +32,47 @@ export class GoogleVoiceProvider implements VoiceProvider {
       ],
     };
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
+    const modelsToTry = [
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+    ];
 
-    if (!response.ok) {
-      throw new Error(`Gemini transcription failed: ${response.status} ${response.statusText}`);
+    let lastError = '';
+
+    for (const model of modelsToTry) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (!response.ok) {
+          const errText = await response.text();
+          lastError = `Model ${model} failed (${response.status}): ${errText}`;
+          continue;
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim()) {
+          return {
+            text: text.trim(),
+            provider: this.name,
+            latencyMs: 0,
+          };
+        }
+      } catch (err: any) {
+        lastError = err.message || String(err);
+      }
     }
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Gemini returned no transcription text');
-
-    return {
-      text: text.trim(),
-      provider: this.name,
-      latencyMs: 0,
-    };
+    throw new Error(`Gemini transcription failed: ${lastError}`);
   }
 }

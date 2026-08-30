@@ -7,9 +7,10 @@ export class WhisperVoiceProvider implements VoiceProvider {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
 
-    const ext = mimeType?.split('/')[1]?.split(';')[0] || 'webm';
+    const cleanMimeType = (mimeType || 'audio/webm').split(';')[0].trim();
+    const ext = cleanMimeType.split('/')[1] || 'webm';
     const formData = new FormData();
-    formData.append('file', new Blob([new Uint8Array(audio)], { type: mimeType || 'audio/webm' }), `audio.${ext}`);
+    formData.append('file', new Blob([new Uint8Array(audio)], { type: cleanMimeType }), `audio.${ext}`);
     formData.append('model', 'whisper-1');
     if (language && language !== 'om') formData.append('language', language);
 
