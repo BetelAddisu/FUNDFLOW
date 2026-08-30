@@ -1,7 +1,9 @@
 import { VoiceProvider, VoiceTranscriptionResult, VoiceProviderName } from '../types';
 
 export class WhisperVoiceProvider implements VoiceProvider {
-  name: VoiceProviderName = 'whisper';
+  // NOTE: This provider is not registered. The 'whisper' name was removed from VoiceProviderName.
+  // Using 'google' as a placeholder — this file is kept for reference only.
+  name: VoiceProviderName = 'google';
 
   async transcribe(audio: Buffer, language?: string, mimeType?: string): Promise<VoiceTranscriptionResult> {
     const apiKey = process.env.OPENAI_API_KEY;

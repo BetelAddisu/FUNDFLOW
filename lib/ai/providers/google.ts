@@ -12,9 +12,10 @@ export class GoogleVoiceProvider implements VoiceProvider {
 
     // Convert audio to base64
     const audioBase64 = audio.toString('base64');
-    const prompt = language && language !== 'en'
-      ? `Transcribe the following audio in ${language}. Return only the transcription text.`
-      : 'Transcribe the following spoken audio into clear English text. Return ONLY the verbatim transcription text with no commentary.';
+    const prompt =
+      language && language !== 'en'
+        ? `Transcribe the following audio in ${language}. Return only the transcription text.`
+        : 'Transcribe the following spoken audio into clear English text. Return ONLY the verbatim transcription text with no commentary.';
 
     const requestBody = {
       contents: [
@@ -32,10 +33,11 @@ export class GoogleVoiceProvider implements VoiceProvider {
       ],
     };
 
+    // Current Gemini model names (as of 2026). gemini-3.6-flash is confirmed working.
     const modelsToTry = [
-      'gemini-1.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-pro-preview',
     ];
 
     let lastError = '';

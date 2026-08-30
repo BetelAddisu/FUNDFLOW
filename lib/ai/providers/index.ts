@@ -1,12 +1,12 @@
 import { VoiceProvider, VoiceTranscriptionResult } from '../types';
 import { AddisVoiceProvider } from './addis';
 import { GoogleVoiceProvider } from './google';
-import { WhisperVoiceProvider } from './whisper';
+import { GroqWhisperVoiceProvider } from './groq-whisper';
 
 let voiceProviders: VoiceProvider[] = [
-  new AddisVoiceProvider(),
-  new GoogleVoiceProvider(),
-  new WhisperVoiceProvider(),
+  new GroqWhisperVoiceProvider(), // Primary: Groq Whisper (fast, supports webm/mp4/ogg natively, GROQ_API_KEY)
+  new AddisVoiceProvider(),       // Secondary: Addis AI for Amharic/Oromo (skips English)
+  new GoogleVoiceProvider(),      // Tertiary: Gemini (base64 inline, used as last resort)
 ];
 
 export function setVoiceProviders(providers: VoiceProvider[]) {

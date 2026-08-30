@@ -8,7 +8,7 @@ export class PrimaryBackupReasoningProvider implements ReasoningProvider {
     if (!apiKey) throw new Error('REASONING_PRIMARY_BACKUP_API_KEY is not set');
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

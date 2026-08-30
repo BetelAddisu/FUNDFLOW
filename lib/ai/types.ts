@@ -10,7 +10,7 @@ export interface ReasoningResult {
   latencyMs: number;
 }
 
-export type VoiceProviderName = 'addis' | 'google' | 'whisper';
+export type VoiceProviderName = 'addis' | 'google' | 'groq-whisper';
 export type ReasoningProviderName = 'primary' | 'groq' | 'openrouter' | 'primaryBackup';
 
 export interface VoiceProvider {
