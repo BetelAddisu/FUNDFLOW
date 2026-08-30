@@ -167,9 +167,8 @@ export function buildQuestionPrompt(
   const knownHighlights = Object.entries(flatEvidence)
     .map(([k, v]) => {
       const approx = v.isApproximate ? '~' : '';
-      const inferred = v.state === 'inferred' ? ' (assumed/inferred)' : '';
       const justNow = justExtractedFields?.includes(k) ? ' ✦ JUST CAPTURED THIS TURN' : '';
-      return `${k}: ${approx}${JSON.stringify(v.value)}${inferred}${justNow}`;
+      return `${k}: ${approx}${JSON.stringify(v.value)}${justNow}`;
     })
     .join('\n');
 

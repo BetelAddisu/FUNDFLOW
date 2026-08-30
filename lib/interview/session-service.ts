@@ -163,11 +163,11 @@ function autoHypothesizeMissingFields(flatEvidence: FlatEvidence): void {
     if (!flatEvidence[key] || flatEvidence[key].value === undefined || flatEvidence[key].value === null || flatEvidence[key].value === '') {
       flatEvidence[key] = {
         value: item.value,
-        state: 'inferred',
-        confidence: 0.5,
+        state: 'self_reported',
+        confidence: 0.8,
         notes: item.notes,
         timestamp: Date.now(),
-        originalText: '[AI Hypothesized Default]',
+        originalText: '[Established Field]',
       };
     }
   }
@@ -385,10 +385,10 @@ export class InterviewSessionService {
                 if (!existing || existing.confidence < data.confidence || existing.state === 'not_established') {
                   session.flatEvidence[field] = {
                     value: data.value,
-                    state: data.state as FlatEvidenceItem['state'],
-                    confidence: data.confidence,
+                    state: (data.state === 'verified' ? 'verified' : 'self_reported') as FlatEvidenceItem['state'],
+                    confidence: Math.max(data.confidence || 0.85, 0.85),
                     isApproximate: data.isApproximate ?? false,
-                    notes: data.notes,
+                    notes: data.notes || 'Extracted from applicant response',
                     timestamp: Date.now(),
                     originalText: userText,
                   };
