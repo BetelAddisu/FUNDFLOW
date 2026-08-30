@@ -582,6 +582,22 @@ export default function ApplyPage() {
 
         setFlatEvidence(data.evidence);
 
+        // Instantly reflect submission in localStorage for Reviewer Workstation
+        try {
+          localStorage.setItem(
+            'fundflow_live_submission',
+            JSON.stringify({
+              sessionId,
+              evidence: data.evidence,
+              currentUser,
+              progress: data.progress,
+              updatedAt: new Date().toISOString(),
+            })
+          );
+        } catch (e) {
+          console.warn('Failed to store live submission in localStorage:', e);
+        }
+
         if (newKeys.size > 0) {
           setRecentlyExtractedKeys(newKeys);
           const toastText = lang === 'am'
