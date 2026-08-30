@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { reviewerFixtures } from '@/lib/reviewer/fixtures';
+import { rankApplications } from '@/lib/reviewer/ranking';
 
 interface ReviewEntry {
   id: string;
@@ -81,6 +83,11 @@ export default function ReviewPage() {
     fetch(`/api/review/applications?slots=${slots}`)
       .then((res) => res.json())
       .then((d) => {
+        let rankedApps: ReviewEntry[] =
+          d?.ranked && d.ranked.length > 0
+            ? d.ranked
+            : rankApplications(reviewerFixtures, slots).ranked;
+
         // Merge client live submission if present
         const liveStr = typeof window !== 'undefined' ? localStorage.getItem('fundflow_live_submission') : null;
         if (liveStr) {
@@ -169,19 +176,56 @@ export default function ReviewPage() {
             };
 
             // Deduplicate and unshift live entry at top
-            if (d.ranked) {
-              d.ranked = [liveEntry, ...d.ranked.filter((a: any) => a.id !== liveEntry.id && a.companyName !== compName)];
-            }
+            rankedApps = [liveEntry, ...rankedApps.filter((a: any) => a.id !== liveEntry.id && a.companyName !== compName)];
           } catch (e) {
             console.warn('Failed to parse live submission from localStorage:', e);
           }
         }
 
-        setData(d);
+        const eligibleList = rankedApps.filter((a) => a.eligible !== false);
+        const shortlistList = eligibleList.slice(0, slots * 2);
+
+        const computedMetrics = {
+          totalApplications: rankedApps.length,
+          eligibleCount: rankedApps.filter((a) => a.eligible === true).length,
+          needsReviewCount: rankedApps.filter((a) => a.eligible === 'needs_review').length,
+          excludedCount: rankedApps.filter((a) => a.eligible === false).length,
+          shortlistCount: shortlistList.length,
+          slotsAvailable: slots,
+          averageScoreVariantA: Math.round(
+            rankedApps.reduce((acc, curr) => acc + curr.totalPointsVariantA, 0) / (rankedApps.length || 1)
+          ),
+        };
+
+        setData({
+          metrics: computedMetrics,
+          ranked: rankedApps,
+          shortlist: shortlistList,
+          slotsAvailable: slots,
+        });
         setLoading(false);
       })
       .catch((err) => {
-        console.error(err);
+        console.error('Review API error, using fallback fixtures:', err);
+        const fallbackRanked = rankApplications(reviewerFixtures, slots).ranked;
+        const eligibleList = fallbackRanked.filter((a) => a.eligible !== false);
+        const shortlistList = eligibleList.slice(0, slots * 2);
+        setData({
+          metrics: {
+            totalApplications: fallbackRanked.length,
+            eligibleCount: fallbackRanked.filter((a) => a.eligible === true).length,
+            needsReviewCount: fallbackRanked.filter((a) => a.eligible === 'needs_review').length,
+            excludedCount: fallbackRanked.filter((a) => a.eligible === false).length,
+            shortlistCount: shortlistList.length,
+            slotsAvailable: slots,
+            averageScoreVariantA: Math.round(
+              fallbackRanked.reduce((acc, curr) => acc + curr.totalPointsVariantA, 0) / (fallbackRanked.length || 1)
+            ),
+          },
+          ranked: fallbackRanked,
+          shortlist: shortlistList,
+          slotsAvailable: slots,
+        });
         setLoading(false);
       });
   };
@@ -237,7 +281,7 @@ export default function ReviewPage() {
         <div className="flex items-center gap-4">
           <div data-testid="synthetic-label" className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded bg-[#172030] border border-slate-700 text-xs text-slate-300 font-medium">
             <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            Synthetic Dataset (12 Applicants)
+            Dataset ({ranked.length} Applicants)
           </div>
 
           <div className="flex items-center gap-2 text-xs bg-[#0b0f17] px-3 py-1 rounded border border-slate-800">
