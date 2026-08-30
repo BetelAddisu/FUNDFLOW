@@ -1,84 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-dark: #0a0d12;
-  --card-dark: #121721;
-  --border-dark: #222938;
-  --accent-cyan: #38bdf8;
+  --bg-main: #0b0f17;
+  --bg-surface: #111723;
+  --bg-subtle: #172030;
+  --border: #222d3d;
+  --border-subtle: #1c2533;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #2563eb;
+  --accent-cyan: #06b6d4;
   --accent-emerald: #10b981;
-  --accent-purple: #8b5cf6;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #090d16;
-  color: #f1f5f9;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
   min-height: 100vh;
   margin: 0;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbars */
+/* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0d121d;
+  background: var(--bg-main);
 }
 ::-webkit-scrollbar-thumb {
-  background: #252e42;
-  border-radius: 4px;
+  background: var(--border);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #374461;
+  background: #334155;
 }
 
-/* Custom Glassmorphism */
-.glass-panel {
-  background: rgba(18, 23, 33, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Audio visualizer bars animation */
+@keyframes barWave {
+  0%, 100% { height: 6px; }
+  50% { height: 20px; }
 }
 
-.glass-card {
-  background: rgba(26, 33, 48, 0.7);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.visualizer-bar {
+  animation: barWave 1.2s ease-in-out infinite;
 }
-
-.glass-card:hover {
-  border-color: rgba(56, 189, 248, 0.3);
-  box-shadow: 0 4px 20px -2px rgba(56, 189, 248, 0.15);
-}
-
-/* Pulsing Recording Indicator */
-@keyframes pulse-ring {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 0.4; }
-  100% { transform: scale(0.95); opacity: 0.8; }
-}
-
-.pulse-recording {
-  animation: pulse-ring 1.5s ease-in-out infinite;
-}
-
-/* Gradient Text */
-.gradient-text {
-  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-emerald {
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+.visualizer-bar:nth-child(2) { animation-delay: 0.2s; }
+.visualizer-bar:nth-child(3) { animation-delay: 0.4s; }
+.visualizer-bar:nth-child(4) { animation-delay: 0.1s; }
+.visualizer-bar:nth-child(5) { animation-delay: 0.3s; }
